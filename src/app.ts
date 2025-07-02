@@ -6,6 +6,11 @@ import logger from "./logger.js";
 const app = express();
 app.use(express.json());
 
+// Health check endpoint for Cloud Run
+app.get('/health', (_, res) => {
+  res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() })
+})
+
 app.post("/mcp", async (req: Request, res: Response) => {
   // In stateless mode, create a new instance of transport and server for each request
   // to ensure complete isolation. A single instance would cause request ID collisions

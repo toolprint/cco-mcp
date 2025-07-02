@@ -25,6 +25,10 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "pnpm format:check",
+    "test": "echo \"No tests configured yet\"",
+    "docker:build": "docker buildx bake",
+    "docker:build:dev": "docker buildx bake dev",
+    "docker:push": "REGISTRY=$(node .docker-env.js) docker buildx bake cco-mcp-registry",
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
@@ -35,6 +39,7 @@
     "zod": "^3.25.67"
   },
   "devDependencies": {
+    "@types/node": "^24.0.10",
     "pino-pretty": "^13.0.0",
     "prettier": "^3.5.3",
     "tsup": "^8.5.0",
