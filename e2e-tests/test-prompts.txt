@@ -1,0 +1,32 @@
+# CCO-MCP Test Prompts
+# These prompts exercise different aspects of the approval system
+
+# Basic File Operations
+Create a file called hello.py with a simple print statement, then use bash to run it with python
+
+# File Editing Operations  
+Create a simple JavaScript file called app.js with a console.log statement, then edit it to add another line
+
+# Context7 Documentation
+Use context7 to look up documentation for the Python requests library
+
+# Combined Operations
+Create a README.md file with project information, then create a simple index.html file that references it
+
+# Code Analysis
+Read the .mcp.ct.json file and explain what MCP servers are configured
+
+# File Modification
+Create a simple JavaScript file called app.js, then edit it to add a console.log statement
+
+# Bash Commands
+Use bash to list all files in the current directory, then create a new directory called 'test-dir'
+
+# Multiple Tool Usage
+Create a Python script that fetches data from an API, then use context7 to look up how to use the requests library, and finally run the script
+
+# Multiple File Operations
+Create three files: config.json, data.txt, and script.sh, then use bash to list them all
+
+# Error Handling Test
+Try to read a file that doesn't exist, then create it and read it successfully

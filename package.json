@@ -7,9 +7,9 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.js"
     }
   },
   "files": [
@@ -21,11 +21,18 @@
     "build": "tsup",
     "build:watch": "tsup --watch",
     "dev": "tsx watch src/index.ts",
+    "dev:auto-approve": "CCO_AUTO_APPROVE=true tsx watch src/index.ts",
+    "dev:ui": "cd ui && pnpm dev",
+    "dev:all": "concurrently \"pnpm dev\" \"pnpm dev:ui\"",
+    "build:ui": "cd ui && pnpm build",
+    "build:all": "pnpm build && pnpm build:ui",
     "inspect": "npx @modelcontextprotocol/inspector --config mcp.json --server cco & pnpm dev",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "pnpm format:check",
     "test": "echo \"No tests configured yet\"",
+    "test:e2e:record": "cd e2e-tests && ./run-test-with-recording.sh",
+    "playwright:install": "playwright install chromium",
     "docker:build": "docker buildx bake",
     "docker:build:dev": "docker buildx bake dev",
     "docker:push": "REGISTRY=$(node .docker-env.js) docker buildx bake cco-mcp-registry",
@@ -39,11 +46,23 @@
     "zod": "^3.25.67"
   },
   "devDependencies": {
+    "@playwright/test": "^1.53.2",
+    "@types/express": "^5.0.3",
     "@types/node": "^24.0.10",
+    "concurrently": "^9.2.0",
     "pino-pretty": "^13.0.0",
+    "playwright": "^1.53.2",
     "prettier": "^3.5.3",
+    "sharp": "^0.34.2",
+    "terminalizer": "^0.12.0",
     "tsup": "^8.5.0",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron",
+      "@homebridge/node-pty-prebuilt-multiarch"
+    ]
   }
 }

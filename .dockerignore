@@ -1,0 +1,9 @@
+node_modules/
+dist/
+e2e-tests/
+ui/node_modules/
+ui/dist/
+.git/
+*.log
+.env
+.DS_Store
