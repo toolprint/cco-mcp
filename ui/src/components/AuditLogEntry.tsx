@@ -10,6 +10,7 @@ import {
   Terminal,
   Server,
   UserCircle,
+  Shield,
 } from "lucide-react";
 import type { AuditLogEntry as AuditLogEntryType } from "../types/audit";
 import { Card, CardContent } from "./ui/card";
@@ -23,12 +24,14 @@ interface AuditLogEntryProps {
   entry: AuditLogEntryType;
   onApprove?: (id: string) => void;
   onDeny?: (id: string) => void;
+  onCreateRule?: (entry: AuditLogEntryType) => void;
 }
 
 export const AuditLogEntry: React.FC<AuditLogEntryProps> = ({
   entry,
   onApprove,
   onDeny,
+  onCreateRule,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const timestamp = new Date(entry.timestamp).toLocaleString();
@@ -297,6 +300,21 @@ export const AuditLogEntry: React.FC<AuditLogEntryProps> = ({
                   <X className="h-4 w-4" />
                   Deny
                 </Button>
+                {onCreateRule && (
+                  <Button
+                    onClick={() => onCreateRule(entry)}
+                    size="sm"
+                    variant="outline"
+                    className={cn(
+                      "gap-2 flex-1 max-w-[150px]",
+                      "border-blueprint-500 text-blueprint-600 hover:bg-blueprint-50",
+                      "dark:border-blueprint-400 dark:text-blueprint-400 dark:hover:bg-blueprint-900/20"
+                    )}
+                  >
+                    <Shield className="h-4 w-4" />
+                    Create Rule
+                  </Button>
+                )}
               </div>
             </div>
           )}

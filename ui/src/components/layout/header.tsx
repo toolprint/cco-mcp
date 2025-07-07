@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Shield, Wifi, WifiOff, AlertTriangle } from "lucide-react";
+import { Shield, Wifi, WifiOff, AlertTriangle, RefreshCw, Settings } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
 import { Badge } from "../ui/badge";
 import { cn } from "../../lib/utils";
 
@@ -12,10 +13,13 @@ interface AutoApprovalInfo {
 interface HeaderProps {
   isConnected: boolean;
   isHealthy: boolean | null;
+  onRefresh?: () => void;
+  loading?: boolean;
 }
 
-export const Header: React.FC<HeaderProps> = ({ isConnected, isHealthy }) => {
+export const Header: React.FC<HeaderProps> = ({ isConnected, isHealthy, onRefresh, loading = false }) => {
   const [autoApprovalInfo, setAutoApprovalInfo] = useState<AutoApprovalInfo | null>(null);
+  const location = useLocation();
 
   useEffect(() => {
     // Fetch auto-approval status from health endpoint
@@ -76,8 +80,42 @@ export const Header: React.FC<HeaderProps> = ({ isConnected, isHealthy }) => {
               </div>
             </div>
 
-            {/* Status Indicators */}
-            <div className="flex items-center space-x-6">
+            {/* Navigation and Status Indicators */}
+            <div className="flex items-center space-x-4">
+              {/* Refresh button (only on dashboard) */}
+              {location.pathname === "/dashboard" && onRefresh && (
+                <button
+                  onClick={onRefresh}
+                  disabled={loading}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+                  <span>Refresh</span>
+                </button>
+              )}
+
+              {/* Navigation */}
+              <Link
+                to={location.pathname === "/config" ? "/dashboard" : "/config"}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors",
+                  "bg-blueprint-50 hover:bg-blueprint-100 text-blueprint-700",
+                  "dark:bg-blueprint-900/20 dark:hover:bg-blueprint-900/30 dark:text-blueprint-400"
+                )}
+              >
+                {location.pathname === "/config" ? (
+                  <>
+                    <Shield className="h-4 w-4" />
+                    <span>Dashboard</span>
+                  </>
+                ) : (
+                  <>
+                    <Settings className="h-4 w-4" />
+                    <span>Configuration</span>
+                  </>
+                )}
+              </Link>
+
               {/* Auto-Approval Status */}
               {autoApprovalInfo?.enabled && (
                 <Badge
