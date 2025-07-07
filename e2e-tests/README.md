@@ -103,14 +103,32 @@ Each test creates a temporary git repository with a unique name (e.g., `zap-123`
 The test script uses these environment variables:
 
 - `CCO_PORT` - Port where CCO-MCP is running (default: 8660)
+- `CCO_ENDPOINT` - Full endpoint URL for CCO-MCP (default: `http://host.docker.internal:${CCO_PORT}/mcp`)
+
+### Configuration Examples
+
+```bash
+# Default (local development)
+./run-test.sh
+
+# Custom local port
+CCO_PORT=8080 ./run-test.sh
+
+# External endpoint (e.g., Cloud Run deployment)
+CCO_ENDPOINT=https://auth-server-cco-mcp-2aylmcmupq-uw.a.run.app/mcp ./run-test.sh
+
+# Any custom endpoint
+CCO_ENDPOINT=https://my-cco-server.example.com/mcp ./run-test.sh
+```
 
 ## MCP Server Configuration
 
 Each test repo is configured with:
 
-- **cco**: HTTP server at `http://host.docker.internal:8660/mcp` for approvals
-- **git**: Standard MCP git server for repository operations
+- **cco**: HTTP server at the configured `CCO_ENDPOINT` for approvals
 - **context7**: SSE server for documentation lookups
+
+The CCO endpoint defaults to `http://host.docker.internal:8660/mcp` for local development but can be overridden to test against external deployments.
 
 ## Debugging
 
