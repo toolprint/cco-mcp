@@ -1,25 +1,25 @@
 import React, { useEffect, useState } from "react";
-import { Shield, Wifi, WifiOff, AlertTriangle, RefreshCw, Settings } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Shield, Wifi, WifiOff, AlertTriangle } from "lucide-react";
+import { useLocation } from "react-router-dom";
 import { Badge } from "../ui/badge";
 import { cn } from "../../lib/utils";
+import { useSSEConnection } from "../../contexts/SSEContext";
 
 interface AutoApprovalInfo {
   enabled: boolean;
   ruleCount: number;
   activeRuleCount: number;
+  defaultAction: "approve" | "deny" | "review";
 }
 
 interface HeaderProps {
-  isConnected: boolean;
   isHealthy: boolean | null;
-  onRefresh?: () => void;
-  loading?: boolean;
+  configRefreshTrigger?: number; // Used to trigger config refresh
 }
 
-export const Header: React.FC<HeaderProps> = ({ isConnected, isHealthy, onRefresh, loading = false }) => {
+const HeaderBase: React.FC<HeaderProps> = ({ isHealthy, configRefreshTrigger }) => {
   const [autoApprovalInfo, setAutoApprovalInfo] = useState<AutoApprovalInfo | null>(null);
-  const location = useLocation();
+  const { isConnected } = useSSEConnection();
 
   useEffect(() => {
     // Fetch auto-approval status from health endpoint
@@ -31,28 +31,30 @@ export const Header: React.FC<HeaderProps> = ({ isConnected, isHealthy, onRefres
         }
       })
       .catch(() => setAutoApprovalInfo(null));
-  }, [isHealthy]); // Re-fetch when health status changes
+  }, [isHealthy, configRefreshTrigger]); // Re-fetch when health status changes or config updates
 
+  const showWarningBanner = autoApprovalInfo?.enabled && autoApprovalInfo?.defaultAction !== "review";
+  
   return (
     <header className="sticky top-0 z-50 w-full bg-white dark:bg-gray-800 shadow-sm">
-      {/* Auto-approve warning banner */}
-      {autoApprovalInfo?.enabled && (
+      {/* Warning banner for non-review default actions */}
+      {showWarningBanner && (
         <div className="bg-amber-100 dark:bg-amber-900/30 border-b-2 border-amber-300 dark:border-amber-700 px-4 py-3">
           <div className="mx-auto max-w-7xl flex items-center justify-center gap-3">
             <AlertTriangle className="h-6 w-6 text-amber-700 dark:text-amber-500 animate-pulse" />
             <div className="flex flex-col items-center">
               <span className="text-base font-semibold text-amber-900 dark:text-amber-100 uppercase tracking-wide">
-                ⚠️ AUTO-APPROVE MODE IS ACTIVE
+                {autoApprovalInfo?.defaultAction === "approve" 
+                  ? "⚠️ DEFAULT ACTION: AUTO-APPROVE (Reviewing Disabled)"
+                  : "⚠️ DEFAULT ACTION: AUTO-DENY (Reviewing Disabled)"
+                }
               </span>
-              {autoApprovalInfo.activeRuleCount > 0 ? (
-                <span className="text-sm text-amber-800 dark:text-amber-200">
-                  {autoApprovalInfo.activeRuleCount} active rule{autoApprovalInfo.activeRuleCount !== 1 ? 's' : ''} configured
-                </span>
-              ) : (
-                <span className="text-sm text-amber-800 dark:text-amber-200">
-                  No rules configured - using default action
-                </span>
-              )}
+              <span className="text-sm text-amber-800 dark:text-amber-200">
+                {autoApprovalInfo?.defaultAction === "approve"
+                  ? "All unmatched requests will be automatically approved"
+                  : "All unmatched requests will be automatically denied"
+                }
+              </span>
             </div>
             <AlertTriangle className="h-6 w-6 text-amber-700 dark:text-amber-500 animate-pulse" />
           </div>
@@ -69,61 +71,30 @@ export const Header: React.FC<HeaderProps> = ({ isConnected, isHealthy, onRefres
               </div>
               <div className="ml-4">
                 <h1 className="text-xl font-semibold text-slate-800 dark:text-white">
-                  CCO-MCP{" "}
                   <span className="text-gradient font-bold">
-                    Audit Dashboard
+                    Claude Code Oversight
                   </span>
                 </h1>
                 <p className="text-xs text-slate-600 dark:text-slate-400">
-                  Real-time tool approval monitoring
+                  Real-time tool approval review system
                 </p>
               </div>
             </div>
 
             {/* Navigation and Status Indicators */}
             <div className="flex items-center space-x-4">
-              {/* Refresh button (only on dashboard) */}
-              {location.pathname === "/dashboard" && onRefresh && (
-                <button
-                  onClick={onRefresh}
-                  disabled={loading}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-50"
-                >
-                  <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
-                  <span>Refresh</span>
-                </button>
-              )}
 
-              {/* Navigation */}
-              <Link
-                to={location.pathname === "/config" ? "/dashboard" : "/config"}
-                className={cn(
-                  "flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors",
-                  "bg-blueprint-50 hover:bg-blueprint-100 text-blueprint-700",
-                  "dark:bg-blueprint-900/20 dark:hover:bg-blueprint-900/30 dark:text-blueprint-400"
-                )}
-              >
-                {location.pathname === "/config" ? (
-                  <>
-                    <Shield className="h-4 w-4" />
-                    <span>Dashboard</span>
-                  </>
-                ) : (
-                  <>
-                    <Settings className="h-4 w-4" />
-                    <span>Configuration</span>
-                  </>
-                )}
-              </Link>
-
-              {/* Auto-Approval Status */}
-              {autoApprovalInfo?.enabled && (
+              {/* Approval System Status */}
+              {autoApprovalInfo !== null && (
                 <Badge
-                  variant="warning"
+                  variant={autoApprovalInfo.enabled ? "success" : "outline"}
                   className="flex items-center gap-1.5"
                 >
-                  <AlertTriangle className="h-3 w-3" />
-                  <span>Auto-Approve</span>
+                  <div className={cn(
+                    "h-2 w-2 rounded-full",
+                    autoApprovalInfo.enabled ? "bg-green-500" : "bg-gray-400"
+                  )} />
+                  <span>Approvals {autoApprovalInfo.enabled ? "Enabled" : "Disabled"}</span>
                 </Badge>
               )}
 
@@ -175,4 +146,15 @@ export const Header: React.FC<HeaderProps> = ({ isConnected, isHealthy, onRefres
       </div>
     </header>
   );
+};
+
+// Wrapper component that uses useLocation when inside a Router
+export const Header: React.FC<HeaderProps> = (props) => {
+  try {
+    useLocation(); // Verify we're inside a Router
+    return <HeaderBase {...props} />;
+  } catch {
+    // Not inside a Router, use the base component directly
+    return <HeaderBase {...props} />;
+  }
 };

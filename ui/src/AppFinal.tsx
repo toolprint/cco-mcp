@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import { RefreshCw, Filter, BarChart3, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { RefreshCw, Filter, BarChart3, X, Settings } from "lucide-react";
 import { AuditLogList } from "./components/AuditLogList";
 import { StatusFilter } from "./components/StatusFilter";
 import { SearchBar } from "./components/SearchBar";
@@ -10,7 +11,7 @@ import { EmptyState } from "./components/EmptyState";
 import { Statistics } from "./components/Statistics";
 import { useAuditLogWithSSE } from "./hooks/useAuditLogWithSSE";
 import { useToast } from "./hooks/useToast";
-import type { AuditLogState } from "./types/audit";
+import type { AuditLogState, AuditLogEntry } from "./types/audit";
 import { Header } from "./components/layout/header";
 import { Footer } from "./components/layout/footer";
 import { Button } from "./components/ui/button";
@@ -31,6 +32,7 @@ function AppFinal() {
   const [showFilters, setShowFilters] = useState(false);
   const [showStats, setShowStats] = useState(true);
 
+  const navigate = useNavigate();
   const { toasts, removeToast, info, success, error: showError } = useToast();
   const entriesRef = useRef<Set<string>>(new Set());
 
@@ -41,7 +43,6 @@ function AppFinal() {
     refetch,
     approve,
     deny,
-    isConnected,
   } = useAuditLogWithSSE({
     state: selectedState === "ALL" ? undefined : selectedState,
     agent_identity: selectedAgent === "ALL" ? undefined : selectedAgent,
@@ -91,7 +92,7 @@ function AppFinal() {
       try {
         await approve(id);
         success("Entry approved successfully");
-      } catch (error) {
+      } catch {
         showError("Failed to approve entry");
       }
     },
@@ -103,7 +104,7 @@ function AppFinal() {
       try {
         await deny(id);
         success("Entry denied successfully");
-      } catch (error) {
+      } catch {
         showError("Failed to deny entry");
       }
     },
@@ -115,6 +116,18 @@ function AppFinal() {
     setSelectedAgent("ALL");
     setSearchQuery("");
   }, []);
+
+  const handleCreateRule = useCallback((entry: AuditLogEntry) => {
+    navigate("/config", {
+      state: {
+        createRuleData: {
+          toolName: entry.tool_name,
+          agentIdentity: entry.agent_identity,
+          action: "review" as const,
+        },
+      },
+    });
+  }, [navigate]);
 
   useEffect(() => {
     // Check API health
@@ -128,7 +141,7 @@ function AppFinal() {
       {/* Blueprint grid background pattern */}
       <div className="fixed inset-0 blueprint-grid opacity-10 pointer-events-none" />
 
-      <Header isConnected={isConnected} isHealthy={isHealthy} />
+      <Header isHealthy={isHealthy} />
 
       <main className="flex-1 mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 w-full">
         {/* Action Bar */}
@@ -168,16 +181,27 @@ function AppFinal() {
               )}
             </Button>
           </div>
-          <Button
-            onClick={refetch}
-            variant="blueprint-outline"
-            size="sm"
-            disabled={loading}
-            className="gap-2"
-          >
-            <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => navigate("/config")}
+              variant="blueprint-outline"
+              size="sm"
+              className="gap-2"
+            >
+              <Settings className="h-4 w-4" />
+              Configuration
+            </Button>
+            <Button
+              onClick={refetch}
+              variant="blueprint-outline"
+              size="sm"
+              disabled={loading}
+              className="gap-2"
+            >
+              <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {/* Statistics */}
@@ -254,6 +278,7 @@ function AppFinal() {
                   entries={paginatedEntries}
                   onApprove={handleApprove}
                   onDeny={handleDeny}
+                  onCreateRule={handleCreateRule}
                 />
 
                 {totalPages > 1 && (

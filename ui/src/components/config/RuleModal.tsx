@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { Button } from "../ui/button";
+import { DurationPicker } from "../ui/duration-picker";
 import type { ApprovalRule, ApprovalAction, MatchPatternType } from "../../types/config";
 
 interface RuleModalProps {
@@ -410,20 +411,14 @@ export const RuleModal: React.FC<RuleModalProps> = ({
                 
                 {formData.timeoutOverride.enabled && (
                   <div className="ml-6">
-                    <input
-                      type="number"
+                    <DurationPicker
                       value={formData.timeoutOverride.value}
-                      onChange={(e) => setFormData(prev => ({ 
+                      onChange={(value) => setFormData(prev => ({ 
                         ...prev, 
-                        timeoutOverride: { ...prev.timeoutOverride, value: parseInt(e.target.value) || 300000 }
+                        timeoutOverride: { ...prev.timeoutOverride, value }
                       }))}
-                      min="1000"
-                      step="1000"
-                      className="w-32 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm focus:border-blueprint-500 focus:ring-blueprint-500"
+                      min={1000}
                     />
-                    <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
-                      milliseconds
-                    </span>
                   </div>
                 )}
               </div>

@@ -66,7 +66,7 @@ export function useConfiguration() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ config: partialConfig }),
+        body: JSON.stringify(partialConfig),
       });
 
       if (!response.ok) {

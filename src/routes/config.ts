@@ -84,14 +84,21 @@ export function createConfigRoutes(): Router {
       const configService = getConfigurationService();
       const currentConfig = configService.getConfig();
       
-      // Merge current config with updates
+      // Deep merge current config with updates
       const updatedConfig = {
         ...currentConfig,
         ...req.body,
-        approvals: {
+        approvals: req.body.approvals ? {
           ...currentConfig.approvals,
-          ...(req.body.approvals || {}),
-        },
+          ...req.body.approvals,
+          // Handle nested timeout object if present
+          timeout: req.body.approvals.timeout ? {
+            ...currentConfig.approvals.timeout,
+            ...req.body.approvals.timeout,
+          } : currentConfig.approvals.timeout,
+          // Preserve rules array if not explicitly provided
+          rules: req.body.approvals.rules || currentConfig.approvals.rules,
+        } : currentConfig.approvals,
       };
 
       const validation = validateConfig(updatedConfig);

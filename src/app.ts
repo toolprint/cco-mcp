@@ -31,6 +31,7 @@ app.get("/health", async (_, res) => {
         enabled: configService.isAutoApprovalEnabled(),
         ruleCount: config.approvals.rules.length,
         activeRuleCount: config.approvals.rules.filter(r => r.enabled !== false).length,
+        defaultAction: config.approvals.defaultAction,
       },
     });
 });
