@@ -4,6 +4,8 @@ import { z } from "zod";
 import logger from "./logger.js";
 import { getAuditLogService } from "./routes/audit.js";
 import { AuditLogEntry } from "./audit/types.js";
+import { getConfigurationService, ToolCallInfo } from "./services/ConfigurationService.js";
+import { ApprovalRule } from "./config/types.js";
 
 const server = new McpServer({
   name: "cco-mcp",
@@ -33,11 +35,8 @@ const deniedResponse = (
   };
 };
 
-// Configuration for automatic approval behavior
-const AUTO_APPROVE_MODE = process.env.CCO_AUTO_APPROVE === "true";
-const APPROVAL_TIMEOUT_MS = parseInt(
-  process.env.CCO_APPROVAL_TIMEOUT || "300000"
-); // 5 minutes default
+// Get configuration service instance
+const configService = getConfigurationService();
 
 server.tool(
   "approval_prompt",
@@ -69,26 +68,82 @@ server.tool(
         "Created audit log entry for approval request"
       );
 
-      // If auto-approve mode is enabled, immediately approve
-      if (AUTO_APPROVE_MODE) {
+      // Check configuration for auto-approval rules
+      const toolCall: ToolCallInfo = {
+        toolName: tool_name,
+        agentIdentity: agent_identity,
+        input: input,
+      };
+
+      const { action, rule, timeout } = configService.getActionForToolCall(toolCall);
+
+      // Handle immediate approve/deny based on rules
+      if (action === 'approve') {
+        const decisionBy = rule ? `rule:${rule.id}` : "config:default-approve";
         const updatedEntry = await auditService.updateEntry(
           entry.id,
           "APPROVED",
-          "auto-approve-mode"
+          decisionBy
         );
-        logger.info({ entryId: entry.id }, "Auto-approved tool call");
+        logger.info({ 
+          entryId: entry.id, 
+          rule: rule?.name, 
+          decisionBy 
+        }, "Auto-approved tool call");
+        
+        // Add rule information to audit log
+        if (rule) {
+          (updatedEntry as any).matched_rule = {
+            id: rule.id,
+            name: rule.name,
+          };
+        }
+        
         return {
           content: [approvedResponse(input)],
         };
       }
 
-      // Otherwise, wait for approval/denial
-      // In a real implementation, this would use a proper async waiting mechanism
-      // For now, we'll poll the audit log service
+      if (action === 'deny') {
+        const decisionBy = rule ? `rule:${rule.id}` : "config:default-deny";
+        const updatedEntry = await auditService.updateEntry(
+          entry.id,
+          "DENIED",
+          decisionBy
+        );
+        logger.info({ 
+          entryId: entry.id, 
+          rule: rule?.name, 
+          decisionBy 
+        }, "Auto-denied tool call");
+        
+        // Add rule information to audit log
+        if (rule) {
+          (updatedEntry as any).matched_rule = {
+            id: rule.id,
+            name: rule.name,
+          };
+        }
+        
+        return {
+          content: [deniedResponse(rule ? `Denied by rule: ${rule.name}` : "Denied by default configuration")],
+        };
+      }
+
+      // Otherwise, wait for approval/denial (action === 'review')
+      // Poll the audit log service
       const startTime = Date.now();
       const pollInterval = 1000; // Poll every second
+      const timeoutMs = timeout || configService.getTimeoutMs();
 
-      while (Date.now() - startTime < APPROVAL_TIMEOUT_MS) {
+      logger.info({ 
+        entryId: entry.id, 
+        action, 
+        timeoutMs,
+        rule: rule?.name,
+      }, "Waiting for manual review");
+
+      while (Date.now() - startTime < timeoutMs) {
         const currentEntry = await auditService.getEntry(entry.id);
 
         if (!currentEntry) {
@@ -133,11 +188,32 @@ server.tool(
         await new Promise((resolve) => setTimeout(resolve, pollInterval));
       }
 
-      // Timeout reached without approval
-      logger.warn({ entryId: entry.id }, "Approval request timed out");
-      return {
-        content: [deniedResponse("Approval request timed out")],
-      };
+      // Timeout reached without approval - apply timeout action
+      const timeoutAction = configService.getTimeoutAction();
+      logger.warn({ 
+        entryId: entry.id, 
+        timeoutAction 
+      }, "Approval request timed out");
+
+      if (timeoutAction === 'approve') {
+        await auditService.updateEntry(
+          entry.id,
+          "APPROVED",
+          "config:timeout-approve"
+        );
+        return {
+          content: [approvedResponse(input)],
+        };
+      } else {
+        await auditService.updateEntry(
+          entry.id,
+          "DENIED",
+          "config:timeout-deny"
+        );
+        return {
+          content: [deniedResponse("Request timed out waiting for approval")],
+        };
+      }
     } catch (error) {
       logger.error({ error, tool_name }, "Error processing approval request");
       return {

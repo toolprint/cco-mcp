@@ -1,0 +1,214 @@
+{
+  "example1_basic_read_only": {
+    "description": "Allow read-only operations automatically",
+    "config": {
+      "approvals": {
+        "enabled": true,
+        "rules": [
+          {
+            "id": "allow-read-operations",
+            "name": "Auto-approve read operations",
+            "description": "Automatically approve file reading and listing operations",
+            "priority": 10,
+            "match": {
+              "toolName": {
+                "type": "regex",
+                "value": "^(Read|LS|Glob|Grep)$"
+              }
+            },
+            "action": "approve",
+            "enabled": true
+          }
+        ],
+        "defaultAction": "review",
+        "timeout": {
+          "duration": 300000,
+          "defaultAction": "deny"
+        }
+      }
+    }
+  },
+  
+  "example2_agent_specific": {
+    "description": "Auto-approve specific agents only",
+    "config": {
+      "approvals": {
+        "enabled": true,
+        "rules": [
+          {
+            "id": "trusted-agent-claude",
+            "name": "Auto-approve Claude agent",
+            "description": "Automatically approve all requests from Claude agent",
+            "priority": 5,
+            "match": {
+              "agentIdentity": {
+                "type": "exact",
+                "value": "claude-code"
+              }
+            },
+            "action": "approve",
+            "enabled": true
+          },
+          {
+            "id": "block-unknown-agents",
+            "name": "Block unknown agents",
+            "description": "Deny requests from agents without identity",
+            "priority": 100,
+            "match": {
+              "agentIdentity": {
+                "type": "exact",
+                "value": ""
+              }
+            },
+            "action": "deny",
+            "enabled": true
+          }
+        ],
+        "defaultAction": "review",
+        "timeout": {
+          "duration": 300000,
+          "defaultAction": "deny"
+        }
+      }
+    }
+  },
+  
+  "example3_safe_paths": {
+    "description": "Allow operations in specific directories only",
+    "config": {
+      "approvals": {
+        "enabled": true,
+        "rules": [
+          {
+            "id": "allow-temp-dir",
+            "name": "Auto-approve /tmp operations",
+            "description": "Allow all file operations in /tmp directory",
+            "priority": 20,
+            "match": {
+              "conditions": [
+                {
+                  "field": "file_path",
+                  "operator": "startsWith",
+                  "value": "/tmp/"
+                }
+              ]
+            },
+            "action": "approve",
+            "enabled": true
+          },
+          {
+            "id": "deny-system-files",
+            "name": "Block system file access",
+            "description": "Prevent access to sensitive system directories",
+            "priority": 1,
+            "match": {
+              "conditions": [
+                {
+                  "field": "file_path",
+                  "operator": "matches",
+                  "value": "^/(etc|sys|proc|boot)/.*"
+                }
+              ]
+            },
+            "action": "deny",
+            "enabled": true
+          }
+        ],
+        "defaultAction": "review",
+        "timeout": {
+          "duration": 300000,
+          "defaultAction": "deny"
+        }
+      }
+    }
+  },
+  
+  "example4_command_filtering": {
+    "description": "Filter bash commands by safety",
+    "config": {
+      "approvals": {
+        "enabled": true,
+        "rules": [
+          {
+            "id": "allow-safe-commands",
+            "name": "Auto-approve safe commands",
+            "description": "Allow common safe commands",
+            "priority": 30,
+            "match": {
+              "toolName": {
+                "type": "exact",
+                "value": "Bash"
+              },
+              "conditions": [
+                {
+                  "field": "command",
+                  "operator": "matches",
+                  "value": "^(ls|pwd|echo|cat|grep|find|which|env|date)\\b"
+                }
+              ]
+            },
+            "action": "approve",
+            "enabled": true
+          },
+          {
+            "id": "deny-dangerous-commands",
+            "name": "Block dangerous commands",
+            "description": "Prevent potentially harmful commands",
+            "priority": 10,
+            "match": {
+              "toolName": {
+                "type": "exact",
+                "value": "Bash"
+              },
+              "conditions": [
+                {
+                  "field": "command",
+                  "operator": "matches",
+                  "value": "(rm|dd|mkfs|fdisk|shutdown|reboot|:(){ :|:& };:)"
+                }
+              ]
+            },
+            "action": "deny",
+            "enabled": true
+          }
+        ],
+        "defaultAction": "review",
+        "timeout": {
+          "duration": 300000,
+          "defaultAction": "deny"
+        }
+      }
+    }
+  },
+  
+  "example5_time_based": {
+    "description": "Different rules for different times (would need time condition support)",
+    "config": {
+      "approvals": {
+        "enabled": true,
+        "rules": [
+          {
+            "id": "business-hours-approve",
+            "name": "Auto-approve during business hours",
+            "description": "More permissive during work hours",
+            "priority": 50,
+            "match": {
+              "toolName": {
+                "type": "wildcard",
+                "value": "*"
+              }
+            },
+            "action": "approve",
+            "timeoutOverride": 60000,
+            "enabled": true
+          }
+        ],
+        "defaultAction": "review",
+        "timeout": {
+          "duration": 300000,
+          "defaultAction": "deny"
+        }
+      }
+    }
+  }
+}

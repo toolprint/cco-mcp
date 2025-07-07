@@ -3,33 +3,53 @@ import { Shield, Wifi, WifiOff, AlertTriangle } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { cn } from "../../lib/utils";
 
+interface AutoApprovalInfo {
+  enabled: boolean;
+  ruleCount: number;
+  activeRuleCount: number;
+}
+
 interface HeaderProps {
   isConnected: boolean;
   isHealthy: boolean | null;
 }
 
 export const Header: React.FC<HeaderProps> = ({ isConnected, isHealthy }) => {
-  const [autoApprove, setAutoApprove] = useState<boolean | null>(null);
+  const [autoApprovalInfo, setAutoApprovalInfo] = useState<AutoApprovalInfo | null>(null);
 
   useEffect(() => {
-    // Fetch auto-approve status
-    fetch("/api/audit-log/status")
+    // Fetch auto-approval status from health endpoint
+    fetch("/health")
       .then((res) => res.json())
-      .then((data) => setAutoApprove(data.autoApprove))
-      .catch(() => setAutoApprove(null));
-  }, []);
+      .then((data) => {
+        if (data.autoApproval) {
+          setAutoApprovalInfo(data.autoApproval);
+        }
+      })
+      .catch(() => setAutoApprovalInfo(null));
+  }, [isHealthy]); // Re-fetch when health status changes
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white dark:bg-gray-800 shadow-sm">
       {/* Auto-approve warning banner */}
-      {autoApprove && (
+      {autoApprovalInfo?.enabled && (
         <div className="bg-amber-100 dark:bg-amber-900/30 border-b-2 border-amber-300 dark:border-amber-700 px-4 py-3">
           <div className="mx-auto max-w-7xl flex items-center justify-center gap-3">
             <AlertTriangle className="h-6 w-6 text-amber-700 dark:text-amber-500 animate-pulse" />
-            <span className="text-base font-semibold text-amber-900 dark:text-amber-100 uppercase tracking-wide">
-              ⚠️ AUTO-APPROVE MODE IS ACTIVE - All tool requests will be
-              automatically approved
-            </span>
+            <div className="flex flex-col items-center">
+              <span className="text-base font-semibold text-amber-900 dark:text-amber-100 uppercase tracking-wide">
+                ⚠️ AUTO-APPROVE MODE IS ACTIVE
+              </span>
+              {autoApprovalInfo.activeRuleCount > 0 ? (
+                <span className="text-sm text-amber-800 dark:text-amber-200">
+                  {autoApprovalInfo.activeRuleCount} active rule{autoApprovalInfo.activeRuleCount !== 1 ? 's' : ''} configured
+                </span>
+              ) : (
+                <span className="text-sm text-amber-800 dark:text-amber-200">
+                  No rules configured - using default action
+                </span>
+              )}
+            </div>
             <AlertTriangle className="h-6 w-6 text-amber-700 dark:text-amber-500 animate-pulse" />
           </div>
         </div>
@@ -58,6 +78,17 @@ export const Header: React.FC<HeaderProps> = ({ isConnected, isHealthy }) => {
 
             {/* Status Indicators */}
             <div className="flex items-center space-x-6">
+              {/* Auto-Approval Status */}
+              {autoApprovalInfo?.enabled && (
+                <Badge
+                  variant="warning"
+                  className="flex items-center gap-1.5"
+                >
+                  <AlertTriangle className="h-3 w-3" />
+                  <span>Auto-Approve</span>
+                </Badge>
+              )}
+
               {/* Connection Status */}
               <div className="flex items-center space-x-2">
                 {isConnected ? (

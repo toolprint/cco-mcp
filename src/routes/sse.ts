@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import { getAuditLogService } from "./audit.js";
 import logger from "../logger.js";
 import { AuditLogEntry, AuditEvent } from "../audit/types.js";
+import { getConfigurationService } from "../services/ConfigurationService.js";
 
 export function createSSERoutes(): Router {
   const router = Router();
@@ -32,10 +33,20 @@ export function createSSERoutes(): Router {
       "SSE client connected"
     );
 
-    // Send initial connection message
+    // Send initial connection message with configuration status
+    const configService = getConfigurationService();
+    const config = configService.getConfig();
+    
     res.write("event: connected\n");
     res.write(
-      `data: ${JSON.stringify({ message: "Connected to audit log stream" })}\n\n`
+      `data: ${JSON.stringify({ 
+        message: "Connected to audit log stream",
+        autoApproval: {
+          enabled: configService.isAutoApprovalEnabled(),
+          ruleCount: config.approvals.rules.length,
+          activeRuleCount: config.approvals.rules.filter(r => r.enabled !== false).length,
+        }
+      })}\n\n`
     );
 
     // Keep connection alive with periodic heartbeat
@@ -89,10 +100,26 @@ export function createSSERoutes(): Router {
       }
     };
 
+    // Configuration update handler
+    const onConfigUpdate = () => {
+      const updatedConfig = configService.getConfig();
+      res.write("event: config-update\n");
+      res.write(
+        `data: ${JSON.stringify({
+          autoApproval: {
+            enabled: configService.isAutoApprovalEnabled(),
+            ruleCount: updatedConfig.approvals.rules.length,
+            activeRuleCount: updatedConfig.approvals.rules.filter(r => r.enabled !== false).length,
+          }
+        })}\n\n`
+      );
+    };
+
     // Register event listeners
     auditService.on("new-entry", onNewEntry);
     auditService.on("state-change", onStateChange);
     auditService.on("entry-expired", onEntryExpired);
+    configService.on("config-updated", onConfigUpdate);
 
     // Handle client disconnect
     req.on("close", () => {
@@ -109,6 +136,7 @@ export function createSSERoutes(): Router {
       auditService.removeListener("new-entry", onNewEntry);
       auditService.removeListener("state-change", onStateChange);
       auditService.removeListener("entry-expired", onEntryExpired);
+      configService.removeListener("config-updated", onConfigUpdate);
     });
 
     // Handle errors
