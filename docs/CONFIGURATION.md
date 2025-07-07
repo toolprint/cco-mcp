@@ -98,9 +98,7 @@ Operators:
 
 ## Environment Variables
 
-- **`CCO_AUTO_APPROVE`**: Set to `"true"` to enable auto-approval (backward compatible)
-- **`CCO_APPROVAL_TIMEOUT`**: Override timeout in milliseconds
-- **`CCO_CONFIG_PATH`**: Custom configuration file path
+- **`CCO_CONFIG_PATH`**: Custom configuration file path (default: `~/.cco-mcp/config.json`)
 
 ## API Endpoints
 
@@ -215,14 +213,26 @@ curl -X POST http://localhost:8660/api/config/rules/test \
 - Configuration changes are logged in the audit trail
 - File watching enables hot-reload of configuration changes
 
-## Migration from Environment Variables
+## Default Configuration
 
-If you were using `CCO_AUTO_APPROVE=true`, the system will:
-1. Enable the approval system
-2. Use an empty rule set
-3. Apply the default action to all requests
+By default, CCO-MCP starts with approval mode enabled and requires manual review for all requests:
 
-To maintain the old behavior:
+```json
+{
+  "approvals": {
+    "enabled": true,
+    "rules": [],
+    "defaultAction": "review",
+    "timeout": {
+      "duration": 300000,
+      "defaultAction": "deny"
+    }
+  }
+}
+```
+
+To allow all requests automatically (not recommended for production):
+
 ```json
 {
   "approvals": {

@@ -77,10 +77,6 @@ export class ConfigurationService extends EventEmitter {
    * Check if auto-approval is enabled
    */
   isAutoApprovalEnabled(): boolean {
-    // Check environment variable for backward compatibility
-    if (process.env[ENV_VARS.AUTO_APPROVE] === "true") {
-      return true;
-    }
     return this.config.approvals.enabled;
   }
 
@@ -88,14 +84,6 @@ export class ConfigurationService extends EventEmitter {
    * Get timeout configuration
    */
   getTimeoutMs(): number {
-    // Check environment variable for backward compatibility
-    const envTimeout = process.env[ENV_VARS.APPROVAL_TIMEOUT];
-    if (envTimeout) {
-      const parsed = parseInt(envTimeout);
-      if (!isNaN(parsed) && parsed > 0) {
-        return parsed;
-      }
-    }
     return this.config.approvals.timeout.duration;
   }
 

@@ -124,8 +124,17 @@ pnpm build
 ### Environment Variables
 
 - `PORT` - Server port (default: 8660)
-- `CCO_AUTO_APPROVE` - Set to 'true' to auto-approve all requests
-- `CCO_APPROVAL_TIMEOUT` - Timeout in milliseconds for approval waiting (default: 300000)
+- `CCO_CONFIG_PATH` - Path to configuration file (default: ~/.cco-mcp/config.json)
+
+### Approval Configuration
+
+CCO-MCP uses a flexible rule-based configuration system for managing approvals. By default, approval mode is enabled and all requests require manual review. You can customize this behavior by creating rules in the configuration file.
+
+See [Configuration Guide](docs/CONFIGURATION.md) for detailed documentation on:
+- Creating approval rules
+- Pattern matching options
+- API endpoints for managing configuration
+- Example configurations
 
 ### MCP Configuration
 
@@ -138,7 +147,7 @@ Add to your Claude Desktop config:
       "command": "node",
       "args": ["/path/to/cco-mcp/dist/index.js"],
       "env": {
-        "CCO_AUTO_APPROVE": "false"
+        "CCO_CONFIG_PATH": "/path/to/config.json"
       }
     }
   }

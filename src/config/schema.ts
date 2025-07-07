@@ -147,7 +147,7 @@ export const DEFAULT_TIMEOUT_CONFIG: TimeoutConfig = {
  * Default approvals configuration
  */
 export const DEFAULT_APPROVALS_CONFIG: ApprovalsConfig = {
-  enabled: false,
+  enabled: true,
   rules: [],
   defaultAction: 'review',
   timeout: DEFAULT_TIMEOUT_CONFIG,

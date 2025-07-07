@@ -15,8 +15,6 @@ export const CONFIG_FILE_PATH = join(CONFIG_DIR, "config.json");
  * Environment variable names
  */
 export const ENV_VARS = {
-  AUTO_APPROVE: "CCO_AUTO_APPROVE",
-  APPROVAL_TIMEOUT: "CCO_APPROVAL_TIMEOUT",
   CONFIG_PATH: "CCO_CONFIG_PATH",
 } as const;
 

@@ -21,7 +21,6 @@
     "build": "tsup",
     "build:watch": "tsup --watch",
     "dev": "tsx watch src/index.ts",
-    "dev:auto-approve": "CCO_AUTO_APPROVE=true tsx watch src/index.ts",
     "dev:ui": "cd ui && pnpm dev",
     "dev:all": "concurrently \"pnpm dev\" \"pnpm dev:ui\"",
     "build:ui": "cd ui && pnpm build",
