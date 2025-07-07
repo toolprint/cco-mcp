@@ -21,16 +21,6 @@ doppler-install:
     brew install gnupg
     brew install dopplerhq/cli/doppler
 
-taskmaster-setup repo-name=`gh repo view --json name -q .name` repo-description=`gh repo view --json description -q .description`:
-    @echo "Setting up Task Master for '{{ repo-name }}' with description: '{{ repo-description }}'"
-    @echo "Press Enter to continue or Ctrl+C to cancel..."
-    @read _
-    @just taskmaster-init repo-name="{{ repo-name }}" repo-description="{{ repo-description }}"
-
-taskmaster-init repo-name repo-description:
-    task-master init --no-git --no-git-tasks --aliases -r claude --name {{ repo-name }} --description "{{ repo-description }}"
-    task-master use-tag main
-
 # Recursively sync git submodules
 [group('git')]
 sync-submodules:
@@ -46,45 +36,141 @@ git-status:
 git-branch name:
     git checkout -b {{ name }}
 
-# Initial project setup
-[group('setup')]
-setup:
-    @echo "TODO: Add your setup command here"
-
-# Run development mode
-[group('dev')]
-dev:
-    @echo "TODO: Add your dev command here"
-
-# Run tests
-[group('test')]
-test:
-    @echo "TODO: Add your test command here"
+# ====== Core CCO-MCP Commands ======
 
 # Build the project
-[group('build')]
 build:
-    @echo "TODO: Add your build command here"
+    pnpm build
 
-# Clean build artifacts and dependencies
-[group('clean')]
-clean:
-    @echo "TODO: Add your clean command here"
+# Build and watch for changes
+build-watch:
+    pnpm build:watch
+
+# Build UI
+build-ui:
+    pnpm build:ui
+
+# Build everything (core + UI)
+build-all:
+    pnpm build:all
+
+# Start production server
+start:
+    pnpm start
+
+# Run production build
+prod:
+    pnpm prod
+
+# ====== Development Commands ======
+
+# Run development server
+dev:
+    pnpm dev
+
+# Run development server with auto-approve
+dev-auto:
+    pnpm dev:auto-approve
+
+# Run UI development server
+dev-ui:
+    pnpm dev:ui
+
+# Run both backend and UI in development
+dev-all:
+    pnpm dev:all
+
+# Inspect MCP server
+inspect:
+    pnpm inspect
+
+# ====== Code Quality ======
 
 # Format code
-[group('lint')]
 format:
-    @echo "Formatting JSON files..."
-    @prettier --write "**/*.json" --ignore-path .gitignore || true
-    @echo "Formatting Markdown files..."
-    @markdownlint-cli2 --fix "**/*.md" "#node_modules" "#.git" || true
-    @echo "Formatting complete!"
+    pnpm format
 
-# Lint code
-[group('lint')]
+# Check formatting
+format-check:
+    pnpm format:check
+
+# Run linter
 lint:
-    @echo "Linting JSON files..."
-    @prettier --check "**/*.json" --ignore-path .gitignore || exit 1
-    @echo "Linting Markdown files..."
-    @markdownlint-cli2 "**/*.md" "#node_modules" "#.git" || exit 1
-    @echo "Linting complete!"
+    pnpm lint
+
+# Run tests
+test:
+    pnpm test
+
+# ====== E2E Testing ======
+
+# Run E2E test without recording
+e2e-test:
+    cd e2e-tests && ./run-test.sh
+
+# Run E2E test with browser recording only
+e2e-test-browser:
+    cd e2e-tests && ./run-test-with-recording.sh -b
+
+# Run E2E test with terminal recording only
+e2e-test-terminal:
+    cd e2e-tests && ./run-test-with-recording.sh -t
+
+# Run E2E test with both browser and terminal recording
+e2e-test-full:
+    cd e2e-tests && ./run-test-with-recording.sh -b -t
+
+# ====== Docker Commands ======
+
+# Build Docker image
+docker-build:
+    pnpm docker:build
+
+# Build Docker development image
+docker-build-dev:
+    pnpm docker:build:dev
+
+# Push Docker image to registry
+docker-push:
+    pnpm docker:push
+
+# ====== Utility Commands ======
+
+# Install Playwright
+playwright-install:
+    pnpm playwright:install
+
+# ====== Combined Commands ======
+
+# Full build and test
+ci:
+    just build-all
+    just lint
+    just test
+
+# Setup development environment
+setup:
+    pnpm install
+    cd ui && pnpm install
+    just playwright-install
+
+# Clean everything
+clean:
+    rm -rf dist
+    rm -rf ui/dist
+    rm -rf e2e-tests/recordings
+
+# ====== Quick Commands ======
+
+# Quick start for development
+quick-start:
+    just dev-all
+
+# Quick demo recording (browser only)
+quick-demo:
+    just e2e-test-browser
+
+# Quick test
+quick-test:
+    just lint
+    just test

@@ -1,0 +1,84 @@
+# Terminalizer Production Demo Mode Configuration
+# Optimized for high-quality documentation and demos
+
+# Specify a command to be executed
+command: null
+
+# Specify the current working directory
+cwd: null
+
+# Environment variables
+env:
+  recording: true
+
+# Set the recording frames per second (higher for smoother playback)
+frameDelay: 50
+
+# Set the maximum idle time limit in milliseconds
+maxIdleTime: 2000
+
+# Professional window frame for production mode
+frameBox:
+  type: window
+  title: CCO-MCP Production Demo
+  style:
+    border: px-1
+    boxShadow: 0 0 15px rgba(0,0,0,0.6)
+
+# Set the terminal cursor style and blinking
+cursorStyle: block
+cursorBlink: true
+
+# Set the terminal font family (professional fonts)
+fontFamily: 'SF Mono, Monaco, Inconsolata, Fira Code, Courier New, Courier, monospace'
+
+# Set the terminal font size
+fontSize: 14
+
+# Set the terminal line height
+lineHeight: 1.2
+
+# Professional theme with good contrast
+theme:
+  background: "#1e1e1e"
+  foreground: "#d4d4d4"
+  cursor: "#ffffff"
+  black: "#000000"
+  red: "#f14c4c"
+  green: "#23d18b"
+  yellow: "#f5f543"
+  blue: "#3b8eea"
+  magenta: "#d670d6"
+  cyan: "#29b8db"
+  white: "#e5e5e5"
+  brightBlack: "#666666"
+  brightRed: "#f14c4c"
+  brightGreen: "#23d18b"
+  brightYellow: "#f5f543"
+  brightBlue: "#3b8eea"
+  brightMagenta: "#d670d6"
+  brightCyan: "#29b8db"
+  brightWhite: "#ffffff"
+
+# Larger terminal size for production demos
+cols: 140
+rows: 35
+
+# Optional watermark for branding
+watermark:
+  imagePath: null
+  style:
+    position: absolute
+    right: 15px
+    bottom: 15px
+    width: 100px
+    opacity: 0.8
+
+# High quality for production
+quality: 90
+
+# The number of times to repeat the GIF animation
+repeat: 0
+
+# Set skip sharing prompt
+skipSharing: true

@@ -1,0 +1,76 @@
+# Terminalizer Quick Demo Mode Configuration (Fixed)
+# Optimized for small file sizes and fast rendering
+
+# Specify a command to be executed
+command: null
+
+# Specify the current working directory
+cwd: null
+
+# Environment variables
+env:
+  recording: true
+
+# Set the recording frames per second (lower for smaller files)
+frameDelay: 100
+
+# Set the maximum idle time limit in milliseconds
+maxIdleTime: 2000
+
+# Simple frame box for quick mode
+frameBox:
+  type: solid
+  title: null
+  style: []
+
+# Set the terminal cursor style and blinking
+cursorStyle: block
+cursorBlink: false
+
+# Set the terminal font family
+fontFamily: 'Monaco, Courier New, monospace'
+
+# Set the terminal font size
+fontSize: 14
+
+# Set the terminal line height
+lineHeight: 1.2
+
+# Simple theme for quick mode
+theme:
+  background: "#000000"
+  foreground: "#ffffff"
+  cursor: "#ffffff"
+  black: "#000000"
+  red: "#ff5555"
+  green: "#50fa7b"
+  yellow: "#f1fa8c"
+  blue: "#bd93f9"
+  magenta: "#ff79c6"
+  cyan: "#8be9fd"
+  white: "#f8f8f2"
+  brightBlack: "#44475a"
+  brightRed: "#ff5555"
+  brightGreen: "#50fa7b"
+  brightYellow: "#f1fa8c"
+  brightBlue: "#bd93f9"
+  brightMagenta: "#ff79c6"
+  brightCyan: "#8be9fd"
+  brightWhite: "#ffffff"
+
+# Terminal size - keeping current size for quick mode
+cols: 120
+rows: 30
+
+# No watermark for quick mode
+watermark:
+  imagePath: null
+
+# Reduced quality for smaller file size
+quality: 60
+
+# The number of times to repeat the GIF animation
+repeat: 0
+
+# Set skip sharing prompt
+skipSharing: true
