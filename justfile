@@ -134,6 +134,20 @@ docker-build-dev:
 docker-push:
     pnpm docker:push
 
+# ====== Docker Compose Commands ======
+
+# Start services in detached mode
+compose-up:
+    docker compose up -d
+
+# Stop and remove services
+compose-down:
+    docker compose down
+
+# View logs (follow mode)
+compose-logs:
+    docker compose logs -f
+
 # ====== Utility Commands ======
 
 # Install Playwright

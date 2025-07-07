@@ -1,5 +1,6 @@
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import express, { Request, Response, Application } from "express";
+import path from "path";
 import server from "./server";
 import logger from "./logger.js";
 import { createAuditRoutes, stopAuditLogService } from "./routes/audit.js";
@@ -7,6 +8,11 @@ import { createSSERoutes } from "./routes/sse.js";
 
 const app: Application = express();
 app.use(express.json());
+
+// Serve static files from the UI dist directory
+// In production, the UI files will be in dist/ui relative to the running JS file
+const uiPath = path.join(process.cwd(), "dist", "ui");
+app.use(express.static(uiPath));
 
 // Health check endpoint for Cloud Run
 app.get("/health", (_, res) => {
@@ -79,6 +85,21 @@ app.delete("/mcp", async (req: Request, res: Response) => {
       id: null,
     })
   );
+});
+
+// Catch-all middleware for SPA - must be last
+app.use((req, res) => {
+  // Only handle GET requests
+  if (req.method !== 'GET') {
+    return res.status(404).json({ error: "Not found" });
+  }
+  
+  // Don't serve index.html for API routes or assets with extensions
+  if (req.path.startsWith("/api") || req.path.match(/\.\w+$/)) {
+    res.status(404).json({ error: "Not found" });
+  } else {
+    res.sendFile(path.join(process.cwd(), "dist", "ui", "index.html"));
+  }
 });
 
 // Graceful shutdown handling
