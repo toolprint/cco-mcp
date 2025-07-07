@@ -25,7 +25,7 @@
     "dev:ui": "cd ui && pnpm dev",
     "dev:all": "concurrently \"pnpm dev\" \"pnpm dev:ui\"",
     "build:ui": "cd ui && pnpm build",
-    "build:all": "pnpm build && pnpm build:ui",
+    "build:all": "pnpm build:ui && pnpm build",
     "inspect": "npx @modelcontextprotocol/inspector --config mcp.json --server cco & pnpm dev",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

@@ -6,16 +6,19 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files for both root and UI
 COPY package.json pnpm-lock.yaml ./
+COPY ui/package.json ui/pnpm-lock.yaml ./ui/
 
-# Install all dependencies
+# Install all dependencies (including UI)
 RUN pnpm install --frozen-lockfile
+RUN cd ui && pnpm install --frozen-lockfile
 
 # Copy source files
 COPY . .
 
-# Build the application
+# Build UI first, then the application (which will copy UI files)
+RUN pnpm run build:ui
 RUN pnpm run build
 
 # Runtime stage
