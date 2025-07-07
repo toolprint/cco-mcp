@@ -14,6 +14,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 CCO_PORT=${CCO_PORT:-8660}
+CCO_ENDPOINT=${CCO_ENDPOINT:-"http://host.docker.internal:${CCO_PORT}/mcp"}
 TEST_DIR="$(cd "$(dirname "$0")" && pwd)"
 TEMP_REPOS_DIR="${TEST_DIR}/temp-repos"
 
@@ -53,7 +54,11 @@ check_docker() {
 
 # Function to check if cco-mcp is running
 check_cco_running() {
-    if curl -s -o /dev/null -w "%{http_code}" "http://localhost:${CCO_PORT}/health" | grep -q "200"; then
+    # Extract base URL from CCO_ENDPOINT (remove /mcp suffix)
+    local base_url="${CCO_ENDPOINT%/mcp}"
+    local health_url="${base_url}/health"
+    
+    if curl -s -o /dev/null -w "%{http_code}" "${health_url}" | grep -q "200"; then
         return 0
     else
         return 1
@@ -93,7 +98,7 @@ create_test_repo() {
   "mcpServers": {
     "cco": {
       "type": "http",
-      "url": "http://host.docker.internal:${CCO_PORT}/mcp"
+      "url": "${CCO_ENDPOINT}"
     },
     "context7": {
       "type": "sse",
@@ -204,6 +209,7 @@ cleanup_repos() {
 # Main test execution
 main() {
     print_info "Starting CCO-MCP E2E Tests"
+    print_info "Using CCO endpoint: ${CCO_ENDPOINT}"
     
     # Check if claude-task is available
     if ! ct -h &>/dev/null; then
@@ -216,12 +222,15 @@ main() {
     
     # Check if cco-mcp is running
     if ! check_cco_running; then
-        print_error "CCO-MCP server is not running on port ${CCO_PORT}"
-        print_info "Please start the server with: pnpm dev or pnpm prod"
+        print_error "CCO-MCP server is not accessible at: ${CCO_ENDPOINT%/mcp}"
+        print_info "Please ensure the server is running and accessible"
+        if [[ "${CCO_ENDPOINT}" == http://host.docker.internal:* ]]; then
+            print_info "For local development, start the server with: pnpm dev or pnpm prod"
+        fi
         exit 1
     fi
     
-    print_success "CCO-MCP server is running on port ${CCO_PORT}"
+    print_success "CCO-MCP server is accessible at: ${CCO_ENDPOINT%/mcp}"
     
     # Create temp repos directory
     mkdir -p "${TEMP_REPOS_DIR}"
