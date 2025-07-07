@@ -1,4 +1,4 @@
-export type AuditLogState = 'APPROVED' | 'DENIED' | 'NEEDS_REVIEW';
+export type AuditLogState = "APPROVED" | "DENIED" | "NEEDS_REVIEW";
 
 export interface AuditLogEntry {
   id: string;
@@ -10,7 +10,7 @@ export interface AuditLogEntry {
   agent_identity: string;
   state: AuditLogState;
   expires_at: Date | string;
-  
+
   // Optional fields for when decision is made
   decision_by?: string;
   decision_time?: Date | string;

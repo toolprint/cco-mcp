@@ -30,7 +30,7 @@ cursorStyle: block
 cursorBlink: true
 
 # Set the terminal font family (professional fonts)
-fontFamily: 'SF Mono, Monaco, Inconsolata, Fira Code, Courier New, Courier, monospace'
+fontFamily: "SF Mono, Monaco, Inconsolata, Fira Code, Courier New, Courier, monospace"
 
 # Set the terminal font size
 fontSize: 14

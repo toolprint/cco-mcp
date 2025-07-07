@@ -7,8 +7,12 @@ const region = process.env.GCP_REGION;
 const projectId = process.env.GCP_PROJECT_ID;
 
 if (!region || !projectId) {
-  console.error('Error: GCP_REGION and GCP_PROJECT_ID environment variables must be set');
-  console.error('This script should be run with Doppler: doppler run -- npm run docker:push');
+  console.error(
+    "Error: GCP_REGION and GCP_PROJECT_ID environment variables must be set"
+  );
+  console.error(
+    "This script should be run with Doppler: doppler run -- npm run docker:push"
+  );
   process.exit(1);
 }
 

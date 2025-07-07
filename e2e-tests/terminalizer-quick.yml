@@ -28,7 +28,7 @@ cursorStyle: block
 cursorBlink: false
 
 # Set the terminal font family
-fontFamily: 'Monaco, Courier New, monospace'
+fontFamily: "Monaco, Courier New, monospace"
 
 # Set the terminal font size
 fontSize: 14

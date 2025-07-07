@@ -1,8 +1,8 @@
-import { useEffect, useRef, useCallback } from 'react';
-import type { AuditLogEntry } from '../types/audit';
+import { useEffect, useRef, useCallback } from "react";
+import type { AuditLogEntry } from "../types/audit";
 
 export interface SSEEvent {
-  type: 'new-entry' | 'state-change' | 'entry-expired';
+  type: "new-entry" | "state-change" | "entry-expired";
   entry: AuditLogEntry;
   previousState?: string;
 }
@@ -22,7 +22,7 @@ export function useSSE({
   onNewEntry,
   onStateChange,
   onEntryExpired,
-  filters = {}
+  filters = {},
 }: UseSSEOptions) {
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -36,56 +36,57 @@ export function useSSE({
 
     // Build query string from filters
     const params = new URLSearchParams();
-    if (filters.state) params.append('state', filters.state);
-    if (filters.agent_identity) params.append('agent_identity', filters.agent_identity);
-    if (filters.tool_name) params.append('tool_name', filters.tool_name);
+    if (filters.state) params.append("state", filters.state);
+    if (filters.agent_identity)
+      params.append("agent_identity", filters.agent_identity);
+    if (filters.tool_name) params.append("tool_name", filters.tool_name);
 
-    const url = `/api/audit-log/stream${params.toString() ? `?${params}` : ''}`;
+    const url = `/api/audit-log/stream${params.toString() ? `?${params}` : ""}`;
     const eventSource = new EventSource(url);
     eventSourceRef.current = eventSource;
 
-    eventSource.addEventListener('connected', () => {
-      console.log('SSE connected');
+    eventSource.addEventListener("connected", () => {
+      console.log("SSE connected");
       reconnectAttemptsRef.current = 0;
     });
 
-    eventSource.addEventListener('new-entry', (event) => {
+    eventSource.addEventListener("new-entry", (event) => {
       try {
         const entry = JSON.parse(event.data) as AuditLogEntry;
         onNewEntry?.(entry);
       } catch (error) {
-        console.error('Failed to parse new-entry event:', error);
+        console.error("Failed to parse new-entry event:", error);
       }
     });
 
-    eventSource.addEventListener('state-change', (event) => {
+    eventSource.addEventListener("state-change", (event) => {
       try {
-        console.log('SSE state-change event received:', event.data);
+        console.log("SSE state-change event received:", event.data);
         const data = JSON.parse(event.data) as {
           entry: AuditLogEntry;
           previousState?: string;
         };
         onStateChange?.(data.entry, data.previousState);
       } catch (error) {
-        console.error('Failed to parse state-change event:', error);
+        console.error("Failed to parse state-change event:", error);
       }
     });
 
-    eventSource.addEventListener('entry-expired', (event) => {
+    eventSource.addEventListener("entry-expired", (event) => {
       try {
         const entry = JSON.parse(event.data) as AuditLogEntry;
         onEntryExpired?.(entry);
       } catch (error) {
-        console.error('Failed to parse entry-expired event:', error);
+        console.error("Failed to parse entry-expired event:", error);
       }
     });
 
-    eventSource.addEventListener('heartbeat', () => {
+    eventSource.addEventListener("heartbeat", () => {
       // Heartbeat received, connection is alive
     });
 
     eventSource.onerror = () => {
-      console.error('SSE connection error');
+      console.error("SSE connection error");
       eventSource.close();
       eventSourceRef.current = null;
 
@@ -103,7 +104,14 @@ export function useSSE({
         connect();
       }, delay);
     };
-  }, [filters.state, filters.agent_identity, filters.tool_name, onNewEntry, onStateChange, onEntryExpired]);
+  }, [
+    filters.state,
+    filters.agent_identity,
+    filters.tool_name,
+    onNewEntry,
+    onStateChange,
+    onEntryExpired,
+  ]);
 
   const disconnect = useCallback(() => {
     if (eventSourceRef.current) {
@@ -125,6 +133,6 @@ export function useSSE({
   return {
     isConnected: eventSourceRef.current?.readyState === EventSource.OPEN,
     reconnect: connect,
-    disconnect
+    disconnect,
   };
 }

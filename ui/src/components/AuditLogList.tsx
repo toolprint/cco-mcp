@@ -1,7 +1,7 @@
-import React from 'react';
-import { AuditLogEntry } from './AuditLogEntry';
-import type { AuditLogEntry as AuditLogEntryType } from '../types/audit';
-import { Loader2 } from 'lucide-react';
+import React from "react";
+import { AuditLogEntry } from "./AuditLogEntry";
+import type { AuditLogEntry as AuditLogEntryType } from "../types/audit";
+import { Loader2 } from "lucide-react";
 
 interface AuditLogListProps {
   entries: AuditLogEntryType[];
@@ -16,7 +16,7 @@ export const AuditLogList: React.FC<AuditLogListProps> = ({
   loading = false,
   error = null,
   onApprove,
-  onDeny
+  onDeny,
 }) => {
   if (loading) {
     return (

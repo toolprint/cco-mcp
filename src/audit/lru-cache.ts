@@ -25,12 +25,12 @@ export class LRUCache<K, V> {
 
   constructor(capacity: number) {
     if (capacity <= 0) {
-      throw new Error('LRU cache capacity must be positive');
+      throw new Error("LRU cache capacity must be positive");
     }
-    
+
     this.capacity = capacity;
     this.cache = new Map();
-    
+
     // Create dummy head and tail nodes for easier list manipulation
     this.head = new LRUNode<K, V>(null as any, null as any);
     this.tail = new LRUNode<K, V>(null as any, null as any);
@@ -48,11 +48,11 @@ export class LRUCache<K, V> {
     if (!node) {
       return undefined;
     }
-    
+
     // Move to front (most recently used)
     this.removeNode(node);
     this.addToFront(node);
-    
+
     return node.value;
   }
 
@@ -64,7 +64,7 @@ export class LRUCache<K, V> {
    */
   set(key: K, value: V): V | undefined {
     let evictedValue: V | undefined;
-    
+
     const existingNode = this.cache.get(key);
     if (existingNode) {
       // Update existing node
@@ -76,7 +76,7 @@ export class LRUCache<K, V> {
       const newNode = new LRUNode(key, value);
       this.cache.set(key, newNode);
       this.addToFront(newNode);
-      
+
       // Check capacity
       if (this.cache.size > this.capacity) {
         const lru = this.tail.prev!;
@@ -85,7 +85,7 @@ export class LRUCache<K, V> {
         this.cache.delete(lru.key);
       }
     }
-    
+
     return evictedValue;
   }
 
@@ -99,7 +99,7 @@ export class LRUCache<K, V> {
     if (!node) {
       return false;
     }
-    
+
     this.removeNode(node);
     this.cache.delete(key);
     return true;

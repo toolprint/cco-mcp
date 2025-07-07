@@ -1,10 +1,10 @@
-import React from 'react';
-import type { AuditLogState } from '../types/audit';
-import { Select } from './ui/select';
+import React from "react";
+import type { AuditLogState } from "../types/audit";
+import { Select } from "./ui/select";
 
 interface StatusFilterProps {
-  selectedState: AuditLogState | 'ALL';
-  onStateChange: (state: AuditLogState | 'ALL') => void;
+  selectedState: AuditLogState | "ALL";
+  onStateChange: (state: AuditLogState | "ALL") => void;
 }
 
 export const StatusFilter: React.FC<StatusFilterProps> = ({
@@ -18,7 +18,7 @@ export const StatusFilter: React.FC<StatusFilterProps> = ({
       </label>
       <Select
         value={selectedState}
-        onChange={(e) => onStateChange(e.target.value as AuditLogState | 'ALL')}
+        onChange={(e) => onStateChange(e.target.value as AuditLogState | "ALL")}
         className="w-full"
       >
         <option value="ALL">All Statuses</option>

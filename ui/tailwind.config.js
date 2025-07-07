@@ -1,10 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: ["class"],
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     container: {
       center: true,
@@ -49,27 +46,27 @@ export default {
           foreground: "hsl(var(--card-foreground))",
         },
         blueprint: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
-          950: '#172554',
+          50: "#eff6ff",
+          100: "#dbeafe",
+          200: "#bfdbfe",
+          300: "#93c5fd",
+          400: "#60a5fa",
+          500: "#3b82f6",
+          600: "#2563eb",
+          700: "#1d4ed8",
+          800: "#1e40af",
+          900: "#1e3a8a",
+          950: "#172554",
         },
         grid: {
-          line: '#3b82f620',
-          dot: '#3b82f640',
+          line: "#3b82f620",
+          dot: "#3b82f640",
         },
         status: {
-          success: '#10b981',
-          warning: '#fbbf24',
-          danger: '#ef4444',
-          info: '#3b82f6',
+          success: "#10b981",
+          warning: "#fbbf24",
+          danger: "#ef4444",
+          info: "#3b82f6",
         },
       },
       borderRadius: {
@@ -78,8 +75,8 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['IBM Plex Mono', 'monospace'],
+        sans: ["Inter", "system-ui", "sans-serif"],
+        mono: ["IBM Plex Mono", "monospace"],
       },
       keyframes: {
         "accordion-down": {
@@ -105,11 +102,11 @@ export default {
           to: { opacity: 1 },
         },
         "scale-in": {
-          from: { 
+          from: {
             transform: "scale(0.95)",
             opacity: 0,
           },
-          to: { 
+          to: {
             transform: "scale(1)",
             opacity: 1,
           },
@@ -123,16 +120,16 @@ export default {
         "scale-in": "scale-in 0.2s ease-out",
       },
       backgroundImage: {
-        'blueprint-grid': `linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+        "blueprint-grid": `linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
                           linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px)`,
-        'blueprint-dots': `radial-gradient(circle, var(--grid-dot) 1px, transparent 1px)`,
+        "blueprint-dots": `radial-gradient(circle, var(--grid-dot) 1px, transparent 1px)`,
       },
       backgroundSize: {
-        'grid': '20px 20px',
-        'grid-large': '40px 40px',
-        'dots': '20px 20px',
+        grid: "20px 20px",
+        "grid-large": "40px 40px",
+        dots: "20px 20px",
       },
     },
   },
   plugins: [],
-}
+};

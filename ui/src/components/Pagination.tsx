@@ -1,6 +1,6 @@
-import React from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { clsx } from 'clsx';
+import React from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { clsx } from "clsx";
 
 interface PaginationProps {
   currentPage: number;
@@ -13,7 +13,7 @@ export const Pagination: React.FC<PaginationProps> = ({
   currentPage,
   totalPages,
   onPageChange,
-  className
+  className,
 }) => {
   if (totalPages <= 1) {
     return null;
@@ -31,27 +31,29 @@ export const Pagination: React.FC<PaginationProps> = ({
       for (let i = 1; i <= 5; i++) {
         pages.push(i);
       }
-      pages.push('...');
+      pages.push("...");
       pages.push(totalPages);
     } else if (currentPage >= totalPages - 2) {
       pages.push(1);
-      pages.push('...');
+      pages.push("...");
       for (let i = totalPages - 4; i <= totalPages; i++) {
         pages.push(i);
       }
     } else {
       pages.push(1);
-      pages.push('...');
+      pages.push("...");
       for (let i = currentPage - 1; i <= currentPage + 1; i++) {
         pages.push(i);
       }
-      pages.push('...');
+      pages.push("...");
       pages.push(totalPages);
     }
   }
 
   return (
-    <nav className={clsx('flex items-center justify-center space-x-1', className)}>
+    <nav
+      className={clsx("flex items-center justify-center space-x-1", className)}
+    >
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
@@ -62,7 +64,7 @@ export const Pagination: React.FC<PaginationProps> = ({
       </button>
 
       {pages.map((page, index) => {
-        if (page === '...') {
+        if (page === "...") {
           return (
             <span
               key={`ellipsis-${index}`}
@@ -81,13 +83,13 @@ export const Pagination: React.FC<PaginationProps> = ({
             key={pageNumber}
             onClick={() => onPageChange(pageNumber)}
             className={clsx(
-              'flex items-center justify-center w-8 h-8 rounded-md text-sm font-medium transition-colors',
+              "flex items-center justify-center w-8 h-8 rounded-md text-sm font-medium transition-colors",
               isActive
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                ? "bg-blue-600 text-white"
+                : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
             )}
             aria-label={`Go to page ${pageNumber}`}
-            aria-current={isActive ? 'page' : undefined}
+            aria-current={isActive ? "page" : undefined}
           >
             {pageNumber}
           </button>

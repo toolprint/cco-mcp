@@ -5,6 +5,7 @@ This directory contains end-to-end tests for the CCO-MCP (Claude Code Operator M
 ## 🚀 New: Modular Test System
 
 A new modular E2E test recording system is available in the `modular/` directory. This system provides:
+
 - Better separation of concerns with 4 distinct modules
 - Precise recording timing control (records only `ct run` output)
 - Clean recordings without setup/teardown noise
@@ -37,10 +38,12 @@ The original bash-based test system is documented below and remains functional.
 3. **Docker Running**: Tests run in Docker containers and need Docker daemon running
 
 4. **API Keys**: Ensure you have the necessary API keys set in your environment:
+
    - `ANTHROPIC_API_KEY` - Required for Claude
    - Other MCP server keys as needed
 
 5. **Recording Dependencies** (for recording tests):
+
    - **Playwright**: Installed as dev dependency (`pnpm install`)
    - **Terminalizer**: Installed as dev dependency (`pnpm install`)
    - **Chromium**: Run `pnpm playwright:install` to install browser
@@ -190,6 +193,7 @@ Terminalizer requires a proper terminal environment (TTY) to function. When runn
    ```
 
 This approach allows Terminalizer to:
+
 - Access terminal features (like `process.stdin.setRawMode`)
 - Capture ANSI escape sequences and colors
 - Record in non-interactive environments
@@ -200,11 +204,13 @@ This approach allows Terminalizer to:
 The `run-test-with-recording.sh` script coordinates:
 
 1. **Service Startup**:
+
    - Starts backend in auto-approve mode (`pnpm dev:auto-approve`)
    - Starts frontend UI (`pnpm dev:ui`)
    - Waits for services to be ready
 
 2. **Parallel Recording**:
+
    - UI recording runs in background via `record-ui.js`
    - Terminal recording captures test execution
    - Both stop automatically when tests complete
@@ -217,6 +223,7 @@ The `run-test-with-recording.sh` script coordinates:
 #### Auto-Approve Mode
 
 For unattended test execution, the backend runs in auto-approve mode:
+
 - All tool approval requests are automatically approved
 - Enables continuous test execution without manual intervention
 - Activated with `pnpm dev:auto-approve`

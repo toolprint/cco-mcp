@@ -1,12 +1,12 @@
-import { EventEmitter } from 'events';
-import { 
-  AuditLogEntry, 
-  AuditLogState, 
-  AuditLogFilter, 
+import { EventEmitter } from "events";
+import {
+  AuditLogEntry,
+  AuditLogState,
+  AuditLogFilter,
   AuditLogQueryResult,
   AuditLogEvent,
-  AuditLogEventType
-} from './types.js';
+  AuditLogEventType,
+} from "./types.js";
 
 /**
  * Interface for the audit log service
@@ -20,8 +20,8 @@ export interface IAuditLogService extends EventEmitter {
    * @returns The created audit log entry
    */
   addEntry(
-    toolName: string, 
-    toolInput: Record<string, any>, 
+    toolName: string,
+    toolInput: Record<string, any>,
     agentIdentity?: string
   ): Promise<AuditLogEntry>;
 
@@ -40,8 +40,8 @@ export interface IAuditLogService extends EventEmitter {
    * @returns The updated entry, or null if not found
    */
   updateEntry(
-    id: string, 
-    state: AuditLogState, 
+    id: string,
+    state: AuditLogState,
     decisionBy?: string
   ): Promise<AuditLogEntry | null>;
 

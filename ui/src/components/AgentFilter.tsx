@@ -1,16 +1,16 @@
-import React from 'react';
-import { Select } from './ui/select';
+import React from "react";
+import { Select } from "./ui/select";
 
 interface AgentFilterProps {
   agents: string[];
-  selectedAgent: string | 'ALL';
-  onAgentChange: (agent: string | 'ALL') => void;
+  selectedAgent: string | "ALL";
+  onAgentChange: (agent: string | "ALL") => void;
 }
 
 export const AgentFilter: React.FC<AgentFilterProps> = ({
   agents,
   selectedAgent,
-  onAgentChange
+  onAgentChange,
 }) => {
   if (agents.length === 0) {
     return null;
@@ -23,11 +23,11 @@ export const AgentFilter: React.FC<AgentFilterProps> = ({
       </label>
       <Select
         value={selectedAgent}
-        onChange={(e) => onAgentChange(e.target.value as string | 'ALL')}
+        onChange={(e) => onAgentChange(e.target.value as string | "ALL")}
         className="w-full"
       >
         <option value="ALL">All Agents</option>
-        {agents.map(agent => (
+        {agents.map((agent) => (
           <option key={agent} value={agent}>
             {agent}
           </option>

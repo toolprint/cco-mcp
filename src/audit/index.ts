@@ -4,13 +4,13 @@
  */
 
 // Export all types
-export * from './types.js';
+export * from "./types.js";
 
 // Export interface and factory type
-export * from './interface.js';
+export * from "./interface.js";
 
 // Export constants
-export * from './constants.js';
+export * from "./constants.js";
 
 // Export implementation
-export { AuditLogService, createAuditLogService } from './service.js';
+export { AuditLogService, createAuditLogService } from "./service.js";

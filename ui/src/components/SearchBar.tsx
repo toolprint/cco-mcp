@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { Search, X } from 'lucide-react';
-import { Input } from './ui/input';
+import React, { useState, useCallback, useEffect } from "react";
+import { Search, X } from "lucide-react";
+import { Input } from "./ui/input";
 
 interface SearchBarProps {
   searchQuery: string;
@@ -12,8 +12,8 @@ interface SearchBarProps {
 export const SearchBar: React.FC<SearchBarProps> = ({
   searchQuery,
   onSearchChange,
-  placeholder = 'Search tools, agents...',
-  debounceMs = 300
+  placeholder = "Search tools, agents...",
+  debounceMs = 300,
 }) => {
   const [localValue, setLocalValue] = useState(searchQuery);
 
@@ -32,8 +32,8 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   }, [localValue, searchQuery, onSearchChange, debounceMs]);
 
   const handleClear = useCallback(() => {
-    setLocalValue('');
-    onSearchChange('');
+    setLocalValue("");
+    onSearchChange("");
   }, [onSearchChange]);
 
   return (

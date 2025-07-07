@@ -1,10 +1,10 @@
-import * as React from "react"
-import { ChevronDown } from "lucide-react"
-import { cn } from "../../lib/utils"
+import * as React from "react";
+import { ChevronDown } from "lucide-react";
+import { cn } from "../../lib/utils";
 
 export interface SelectProps
   extends React.SelectHTMLAttributes<HTMLSelectElement> {
-  placeholder?: string
+  placeholder?: string;
 }
 
 const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
@@ -28,9 +28,9 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         </select>
         <ChevronDown className="absolute right-3 top-3 h-4 w-4 opacity-50 pointer-events-none" />
       </div>
-    )
+    );
   }
-)
-Select.displayName = "Select"
+);
+Select.displayName = "Select";
 
-export { Select }
+export { Select };

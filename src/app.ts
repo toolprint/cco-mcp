@@ -9,15 +9,17 @@ const app: Application = express();
 app.use(express.json());
 
 // Health check endpoint for Cloud Run
-app.get('/health', (_, res) => {
-  res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() })
-})
+app.get("/health", (_, res) => {
+  res
+    .status(200)
+    .json({ status: "healthy", timestamp: new Date().toISOString() });
+});
 
 // Mount SSE routes first (must come before audit routes due to /audit-log/stream vs /audit-log/:id conflict)
-app.use('/api', createSSERoutes());
+app.use("/api", createSSERoutes());
 
 // Mount audit log API routes
-app.use('/api', createAuditRoutes());
+app.use("/api", createAuditRoutes());
 
 app.post("/mcp", async (req: Request, res: Response) => {
   // In stateless mode, create a new instance of transport and server for each request
@@ -80,14 +82,14 @@ app.delete("/mcp", async (req: Request, res: Response) => {
 });
 
 // Graceful shutdown handling
-process.on('SIGTERM', async () => {
-  logger.info('SIGTERM received, shutting down gracefully');
+process.on("SIGTERM", async () => {
+  logger.info("SIGTERM received, shutting down gracefully");
   await stopAuditLogService();
   process.exit(0);
 });
 
-process.on('SIGINT', async () => {
-  logger.info('SIGINT received, shutting down gracefully');
+process.on("SIGINT", async () => {
+  logger.info("SIGINT received, shutting down gracefully");
   await stopAuditLogService();
   process.exit(0);
 });

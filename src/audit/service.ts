@@ -1,24 +1,24 @@
-import { EventEmitter } from 'events';
-import { v4 as uuidv4 } from 'uuid';
-import { 
-  AuditLogEntry, 
-  AuditLogState, 
-  AuditLogFilter, 
+import { EventEmitter } from "events";
+import { v4 as uuidv4 } from "uuid";
+import {
+  AuditLogEntry,
+  AuditLogState,
+  AuditLogFilter,
   AuditLogQueryResult,
   AuditLogConfig,
-  AuditLogEvent
-} from './types.js';
-import { IAuditLogService } from './interface.js';
-import { 
-  DEFAULT_MAX_ENTRIES, 
-  DEFAULT_TTL_MS, 
+  AuditLogEvent,
+} from "./types.js";
+import { IAuditLogService } from "./interface.js";
+import {
+  DEFAULT_MAX_ENTRIES,
+  DEFAULT_TTL_MS,
   DEFAULT_AUTO_DENY_TIMEOUT_MS,
   CLEANUP_INTERVAL_MS,
   MIN_TTL_MS,
-  MAX_TTL_MS
-} from './constants.js';
-import { LRUCache } from './lru-cache.js';
-import logger from '../logger.js';
+  MAX_TTL_MS,
+} from "./constants.js";
+import { LRUCache } from "./lru-cache.js";
+import logger from "../logger.js";
 
 /**
  * In-memory audit log service implementation
@@ -33,17 +33,20 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
 
   constructor(config?: AuditLogConfig) {
     super();
-    
+
     // Validate and set configuration
     this.config = {
       maxEntries: config?.maxEntries ?? DEFAULT_MAX_ENTRIES,
       ttlMs: config?.ttlMs ?? DEFAULT_TTL_MS,
-      autoDenyTimeoutMs: config?.autoDenyTimeoutMs ?? DEFAULT_AUTO_DENY_TIMEOUT_MS
+      autoDenyTimeoutMs:
+        config?.autoDenyTimeoutMs ?? DEFAULT_AUTO_DENY_TIMEOUT_MS,
     };
 
     // Validate TTL
     if (this.config.ttlMs < MIN_TTL_MS || this.config.ttlMs > MAX_TTL_MS) {
-      throw new Error(`TTL must be between ${MIN_TTL_MS}ms and ${MAX_TTL_MS}ms`);
+      throw new Error(
+        `TTL must be between ${MIN_TTL_MS}ms and ${MAX_TTL_MS}ms`
+      );
     }
 
     // Initialize storage
@@ -51,17 +54,17 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
 
     // Start cleanup timer
     this.startCleanupTimer();
-    
-    logger.info({ config: this.config }, 'AuditLogService initialized');
+
+    logger.info({ config: this.config }, "AuditLogService initialized");
   }
 
   async addEntry(
-    toolName: string, 
-    toolInput: Record<string, any>, 
+    toolName: string,
+    toolInput: Record<string, any>,
     agentIdentity?: string
   ): Promise<AuditLogEntry> {
     if (this.stopped) {
-      throw new Error('AuditLogService has been stopped');
+      throw new Error("AuditLogService has been stopped");
     }
 
     const now = new Date();
@@ -71,14 +74,17 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
       tool_name: toolName,
       tool_input: toolInput,
       agent_identity: agentIdentity,
-      state: 'NEEDS_REVIEW',
-      expires_at: new Date(now.getTime() + this.config.ttlMs)
+      state: "NEEDS_REVIEW",
+      expires_at: new Date(now.getTime() + this.config.ttlMs),
     };
 
     // Add to storage (LRU will handle eviction if needed)
     const evicted = this.storage.set(entry.id, entry);
     if (evicted) {
-      logger.debug({ evictedId: evicted.id }, 'Entry evicted due to capacity limit');
+      logger.debug(
+        { evictedId: evicted.id },
+        "Entry evicted due to capacity limit"
+      );
       this.cancelAutoDenyTimer(evicted.id);
     }
 
@@ -86,9 +92,9 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
     this.setupAutoDenyTimer(entry);
 
     // Emit event
-    this.emit('new-entry', { type: 'new-entry', entry });
+    this.emit("new-entry", { type: "new-entry", entry });
 
-    logger.info({ entryId: entry.id, toolName }, 'New audit log entry added');
+    logger.info({ entryId: entry.id, toolName }, "New audit log entry added");
     return entry;
   }
 
@@ -109,12 +115,12 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
   }
 
   async updateEntry(
-    id: string, 
-    state: AuditLogState, 
+    id: string,
+    state: AuditLogState,
     decisionBy?: string
   ): Promise<AuditLogEntry | null> {
     if (this.stopped) {
-      throw new Error('AuditLogService has been stopped');
+      throw new Error("AuditLogService has been stopped");
     }
 
     const entry = await this.getEntry(id);
@@ -123,8 +129,11 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
     }
 
     // Can't update if already decided
-    if (entry.state !== 'NEEDS_REVIEW') {
-      logger.warn({ entryId: id, currentState: entry.state }, 'Cannot update already decided entry');
+    if (entry.state !== "NEEDS_REVIEW") {
+      logger.warn(
+        { entryId: id, currentState: entry.state },
+        "Cannot update already decided entry"
+      );
       return entry;
     }
 
@@ -140,41 +149,47 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
     this.cancelAutoDenyTimer(id);
 
     // Emit event
-    this.emit('state-change', { 
-      type: 'state-change', 
-      entry, 
-      previousState 
+    this.emit("state-change", {
+      type: "state-change",
+      entry,
+      previousState,
     });
 
-    logger.info({ 
-      entryId: id, 
-      previousState, 
-      newState: state, 
-      decisionBy 
-    }, 'Audit log entry updated');
+    logger.info(
+      {
+        entryId: id,
+        previousState,
+        newState: state,
+        decisionBy,
+      },
+      "Audit log entry updated"
+    );
 
     return entry;
   }
 
   async queryEntries(filter?: AuditLogFilter): Promise<AuditLogQueryResult> {
     const allEntries = await this.getAllEntries();
-    
+
     // Apply filters
     let filtered = allEntries;
-    
+
     if (filter?.state) {
-      filtered = filtered.filter(e => e.state === filter.state);
+      filtered = filtered.filter((e) => e.state === filter.state);
     }
-    
+
     if (filter?.agent_identity) {
-      filtered = filtered.filter(e => e.agent_identity === filter.agent_identity);
+      filtered = filtered.filter(
+        (e) => e.agent_identity === filter.agent_identity
+      );
     }
-    
+
     if (filter?.search) {
       const searchLower = filter.search.toLowerCase();
-      filtered = filtered.filter(e => 
-        e.tool_name.toLowerCase().includes(searchLower) ||
-        JSON.stringify(e.tool_input).toLowerCase().includes(searchLower)
+      filtered = filtered.filter(
+        (e) =>
+          e.tool_name.toLowerCase().includes(searchLower) ||
+          JSON.stringify(e.tool_input).toLowerCase().includes(searchLower)
       );
     }
 
@@ -187,16 +202,16 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
       entries: paginated,
       total: filtered.length,
       offset,
-      limit
+      limit,
     };
   }
 
   async getAllEntries(): Promise<AuditLogEntry[]> {
     // Get all entries from storage (already in LRU order)
     const entries = this.storage.values();
-    
+
     // Filter out expired entries
-    const validEntries = entries.filter(entry => {
+    const validEntries = entries.filter((entry) => {
       if (this.isExpired(entry)) {
         this.storage.delete(entry.id);
         this.cancelAutoDenyTimer(entry.id);
@@ -212,7 +227,7 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
     const deleted = this.storage.delete(id);
     if (deleted) {
       this.cancelAutoDenyTimer(id);
-      logger.info({ entryId: id }, 'Audit log entry deleted');
+      logger.info({ entryId: id }, "Audit log entry deleted");
     }
     return deleted;
   }
@@ -225,13 +240,13 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
       if (this.isExpired(entry)) {
         this.storage.delete(id);
         this.cancelAutoDenyTimer(id);
-        this.emit('entry-expired', { type: 'entry-expired', entry });
+        this.emit("entry-expired", { type: "entry-expired", entry });
         removed++;
       }
     }
 
     if (removed > 0) {
-      logger.info({ removedCount: removed }, 'Cleaned up expired entries');
+      logger.info({ removedCount: removed }, "Cleaned up expired entries");
     }
 
     return removed;
@@ -258,7 +273,7 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
     // Remove all listeners
     this.removeAllListeners();
 
-    logger.info('AuditLogService stopped');
+    logger.info("AuditLogService stopped");
   }
 
   async getStats(): Promise<{
@@ -268,11 +283,11 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
     newestEntry?: Date;
   }> {
     const entries = await this.getAllEntries();
-    
+
     const entriesByState: Record<AuditLogState, number> = {
-      'APPROVED': 0,
-      'DENIED': 0,
-      'NEEDS_REVIEW': 0
+      APPROVED: 0,
+      DENIED: 0,
+      NEEDS_REVIEW: 0,
     };
 
     let oldestEntry: Date | undefined;
@@ -280,7 +295,7 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
 
     for (const entry of entries) {
       entriesByState[entry.state]++;
-      
+
       if (!oldestEntry || entry.timestamp < oldestEntry) {
         oldestEntry = entry.timestamp;
       }
@@ -293,7 +308,7 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
       totalEntries: entries.length,
       entriesByState,
       oldestEntry,
-      newestEntry
+      newestEntry,
     };
   }
 
@@ -309,8 +324,8 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
    */
   private startCleanupTimer(): void {
     this.cleanupTimer = setInterval(() => {
-      this.cleanup().catch(err => {
-        logger.error({ error: err }, 'Error during cleanup');
+      this.cleanup().catch((err) => {
+        logger.error({ error: err }, "Error during cleanup");
       });
     }, CLEANUP_INTERVAL_MS);
   }
@@ -319,13 +334,16 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
    * Set up auto-deny timer for an entry
    */
   private setupAutoDenyTimer(entry: AuditLogEntry): void {
-    if (entry.state !== 'NEEDS_REVIEW') {
+    if (entry.state !== "NEEDS_REVIEW") {
       return;
     }
 
     const timer = setTimeout(() => {
-      this.autoDenyEntry(entry.id).catch(err => {
-        logger.error({ error: err, entryId: entry.id }, 'Error during auto-deny');
+      this.autoDenyEntry(entry.id).catch((err) => {
+        logger.error(
+          { error: err, entryId: entry.id },
+          "Error during auto-deny"
+        );
       });
     }, this.config.autoDenyTimeoutMs);
 
@@ -348,30 +366,32 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
    */
   private async autoDenyEntry(id: string): Promise<void> {
     const entry = await this.getEntry(id);
-    if (!entry || entry.state !== 'NEEDS_REVIEW') {
+    if (!entry || entry.state !== "NEEDS_REVIEW") {
       return;
     }
 
-    entry.state = 'DENIED';
+    entry.state = "DENIED";
     entry.denied_by_timeout = true;
     entry.decision_time = new Date();
 
     this.storage.set(id, entry);
     this.autoDenyTimers.delete(id);
 
-    this.emit('state-change', { 
-      type: 'state-change', 
-      entry, 
-      previousState: 'NEEDS_REVIEW' 
+    this.emit("state-change", {
+      type: "state-change",
+      entry,
+      previousState: "NEEDS_REVIEW",
     });
 
-    logger.info({ entryId: id }, 'Entry auto-denied due to timeout');
+    logger.info({ entryId: id }, "Entry auto-denied due to timeout");
   }
 }
 
 /**
  * Factory function to create an audit log service instance
  */
-export function createAuditLogService(config?: AuditLogConfig): IAuditLogService {
+export function createAuditLogService(
+  config?: AuditLogConfig
+): IAuditLogService {
   return new AuditLogService(config);
 }

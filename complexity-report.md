@@ -7,20 +7,22 @@ This report analyzes the complexity of the main entry point files in the CCO-MCP
 ## File Analysis
 
 ### 1. src/index.ts
+
 - **Purpose**: Main entry point that starts the Express server
 - **Lines of Code**: ~10
 - **Complexity**: Low
 - **Dependencies**: Express app from app.ts
-- **Key Functions**: 
+- **Key Functions**:
   - Server initialization
   - Port and host configuration
   - Server startup logging
 
 ### 2. src/app.ts
+
 - **Purpose**: Express application setup and middleware configuration
 - **Lines of Code**: ~90
 - **Complexity**: Medium
-- **Dependencies**: 
+- **Dependencies**:
   - Express framework
   - MCP SDK (StreamableHTTPServerTransport)
   - Routes (audit, SSE)
@@ -33,6 +35,7 @@ This report analyzes the complexity of the main entry point files in the CCO-MCP
   - Graceful shutdown handling
 
 ### 3. src/server.ts
+
 - **Purpose**: MCP server implementation with approval_prompt tool
 - **Lines of Code**: ~100
 - **Complexity**: Medium-High
@@ -50,11 +53,13 @@ This report analyzes the complexity of the main entry point files in the CCO-MCP
 ## Complexity Metrics
 
 ### Cyclomatic Complexity (Estimated)
+
 - **index.ts**: 1 (linear execution)
 - **app.ts**: 5-7 (multiple route handlers, error handling)
 - **server.ts**: 8-10 (polling loop, multiple conditional branches)
 
 ### Maintainability Index (Estimated)
+
 - **index.ts**: 90+ (Very maintainable - simple and focused)
 - **app.ts**: 70-80 (Good maintainability - clear separation of concerns)
 - **server.ts**: 60-70 (Moderate - complex polling logic but well-structured)
@@ -62,6 +67,7 @@ This report analyzes the complexity of the main entry point files in the CCO-MCP
 ## Key Observations
 
 ### Strengths
+
 1. **Clear separation of concerns**: Each file has a specific purpose
 2. **Good error handling**: Proper try-catch blocks and error responses
 3. **Type safety**: Full TypeScript usage with proper types
@@ -69,6 +75,7 @@ This report analyzes the complexity of the main entry point files in the CCO-MCP
 5. **Configurable**: Environment variables for key settings
 
 ### Areas for Potential Improvement
+
 1. **Polling mechanism**: Could be refactored to use promises more elegantly
 2. **Error messages**: Could be centralized for consistency
 3. **Validation**: Input validation could be extracted to separate middleware

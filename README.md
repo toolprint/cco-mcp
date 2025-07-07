@@ -5,6 +5,7 @@ A comprehensive audit and approval system for Claude Code tool calls, featuring 
 ## Overview
 
 CCO-MCP provides a secure approval layer for AI tool calls with:
+
 - **In-memory audit logging** with configurable TTL and LRU eviction
 - **RESTful API** for audit log access and approval/denial actions
 - **Real-time updates** via Server-Sent Events (SSE)
@@ -34,12 +35,14 @@ CCO-MCP provides a secure approval layer for AI tool calls with:
 ### Backend (Node.js/TypeScript)
 
 1. **In-Memory Audit Log Service**
+
    - LRU cache with configurable max entries (default: 1000)
    - Configurable TTL for entries (default: 24 hours)
    - Auto-deny timeout for unapproved requests (default: 5 minutes)
    - Event-driven architecture with EventEmitter
 
 2. **REST API Endpoints**
+
    - `GET /api/audit-log` - Query audit log entries with filtering
    - `GET /api/audit-log/:id` - Get specific entry details
    - `POST /api/audit-log/:id/approve` - Approve a tool request
@@ -54,17 +57,20 @@ CCO-MCP provides a secure approval layer for AI tool calls with:
 ### Frontend (React/TypeScript/Vite)
 
 1. **Real-Time Dashboard**
+
    - Live updates via SSE integration
    - Visual indicators for connection status
    - Toast notifications for important events
 
 2. **Filtering & Search**
+
    - Filter by approval state (Approved/Denied/Needs Review)
    - Filter by agent identity
    - Search across tool names and input parameters
    - Pagination with 10 items per page
 
 3. **Interactive Controls**
+
    - One-click approve/deny actions
    - Bulk actions support
    - Collapsible filter panel
@@ -81,7 +87,7 @@ CCO-MCP provides a secure approval layer for AI tool calls with:
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - pnpm (recommended) or npm
 
 ### Backend Setup
@@ -142,11 +148,13 @@ Add to your Claude Desktop config:
 ## Usage
 
 1. **Start the backend server:**
+
    ```bash
    pnpm start
    ```
 
 2. **Start the UI development server:**
+
    ```bash
    cd ui && pnpm dev
    ```
@@ -162,6 +170,7 @@ Add to your Claude Desktop config:
 ### Query Parameters
 
 All list endpoints support:
+
 - `state` - Filter by state (APPROVED, DENIED, NEEDS_REVIEW)
 - `agent_identity` - Filter by agent identity
 - `search` - Search in tool names and inputs

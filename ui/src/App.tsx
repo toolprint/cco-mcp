@@ -1,24 +1,27 @@
-import { useEffect, useState } from 'react'
-import { Shield, RefreshCw, Wifi, WifiOff } from 'lucide-react'
-import { AuditLogList } from './components/AuditLogList'
-import { StatusFilter } from './components/StatusFilter'
-import { useAuditLogWithSSE } from './hooks/useAuditLogWithSSE'
-import type { AuditLogState } from './types/audit'
+import { useEffect, useState } from "react";
+import { Shield, RefreshCw, Wifi, WifiOff } from "lucide-react";
+import { AuditLogList } from "./components/AuditLogList";
+import { StatusFilter } from "./components/StatusFilter";
+import { useAuditLogWithSSE } from "./hooks/useAuditLogWithSSE";
+import type { AuditLogState } from "./types/audit";
 
 function App() {
-  const [isHealthy, setIsHealthy] = useState<boolean | null>(null)
-  const [selectedState, setSelectedState] = useState<AuditLogState | 'ALL'>('ALL')
-  
-  const { entries, loading, error, refetch, approve, deny, isConnected } = useAuditLogWithSSE({
-    state: selectedState === 'ALL' ? undefined : selectedState,
-  })
+  const [isHealthy, setIsHealthy] = useState<boolean | null>(null);
+  const [selectedState, setSelectedState] = useState<AuditLogState | "ALL">(
+    "ALL"
+  );
+
+  const { entries, loading, error, refetch, approve, deny, isConnected } =
+    useAuditLogWithSSE({
+      state: selectedState === "ALL" ? undefined : selectedState,
+    });
 
   useEffect(() => {
     // Check API health
-    fetch('/api/audit-log')
-      .then(res => res.ok ? setIsHealthy(true) : setIsHealthy(false))
-      .catch(() => setIsHealthy(false))
-  }, [])
+    fetch("/api/audit-log")
+      .then((res) => (res.ok ? setIsHealthy(true) : setIsHealthy(false)))
+      .catch(() => setIsHealthy(false));
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
@@ -37,7 +40,9 @@ function App() {
                 className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
                 disabled={loading}
               >
-                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+                />
                 Refresh
               </button>
               <div className="flex items-center space-x-4">
@@ -48,17 +53,25 @@ function App() {
                     <WifiOff className="h-4 w-4 text-gray-400" />
                   )}
                   <span className="ml-1 text-sm text-gray-600 dark:text-gray-300">
-                    {isConnected ? 'Live' : 'Offline'}
+                    {isConnected ? "Live" : "Offline"}
                   </span>
                 </div>
                 <div className="flex items-center">
-                  <div className={`h-2 w-2 rounded-full ${
-                    isHealthy === null ? 'bg-gray-400' : 
-                    isHealthy ? 'bg-green-500' : 'bg-red-500'
-                  }`} />
+                  <div
+                    className={`h-2 w-2 rounded-full ${
+                      isHealthy === null
+                        ? "bg-gray-400"
+                        : isHealthy
+                          ? "bg-green-500"
+                          : "bg-red-500"
+                    }`}
+                  />
                   <span className="ml-2 text-sm text-gray-600 dark:text-gray-300">
-                    {isHealthy === null ? 'Checking...' : 
-                     isHealthy ? 'API Connected' : 'API Disconnected'}
+                    {isHealthy === null
+                      ? "Checking..."
+                      : isHealthy
+                        ? "API Connected"
+                        : "API Disconnected"}
                   </span>
                 </div>
               </div>
@@ -66,7 +79,7 @@ function App() {
           </div>
         </div>
       </header>
-      
+
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
           <div className="mb-6">
@@ -78,13 +91,13 @@ function App() {
                 {entries.length} entries
               </div>
             </div>
-            
+
             <StatusFilter
               selectedState={selectedState}
               onStateChange={setSelectedState}
             />
           </div>
-          
+
           <AuditLogList
             entries={entries}
             loading={loading}
@@ -95,7 +108,7 @@ function App() {
         </div>
       </main>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
