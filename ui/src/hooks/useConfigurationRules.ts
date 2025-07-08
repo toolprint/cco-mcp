@@ -26,7 +26,7 @@ export function useConfigurationRules() {
     }
   }, []);
 
-  const createRule = useCallback(async (rule: Omit<ApprovalRule, "id">) => {
+  const createRule = useCallback(async (rule: ApprovalRule) => {
     setLoading(true);
     setError(null);
     
@@ -36,7 +36,7 @@ export function useConfigurationRules() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ rule }),
+        body: JSON.stringify(rule),
       });
 
       if (!response.ok) {
@@ -65,7 +65,7 @@ export function useConfigurationRules() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ rule }),
+        body: JSON.stringify(rule),
       });
 
       if (!response.ok) {

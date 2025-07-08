@@ -51,7 +51,7 @@ export const DurationPicker: React.FC<DurationPickerProps> = ({
           onChange={(e) => handleChange('hours', e.target.value)}
           min="0"
           max="99"
-          className="w-14 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-sm focus:border-blueprint-500 focus:ring-blueprint-500 text-center text-sm"
+          className="w-16 h-11 rounded-md border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm focus:border-blueprint-500 focus:ring-blueprint-500 hover:border-gray-400 dark:hover:border-gray-500 text-center text-base px-2 py-3"
         />
         <span className="text-xs text-gray-600 dark:text-gray-400">h</span>
       </div>
@@ -63,7 +63,7 @@ export const DurationPicker: React.FC<DurationPickerProps> = ({
           onChange={(e) => handleChange('minutes', e.target.value)}
           min="0"
           max="59"
-          className="w-14 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-sm focus:border-blueprint-500 focus:ring-blueprint-500 text-center text-sm"
+          className="w-16 h-11 rounded-md border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm focus:border-blueprint-500 focus:ring-blueprint-500 hover:border-gray-400 dark:hover:border-gray-500 text-center text-base px-2 py-3"
         />
         <span className="text-xs text-gray-600 dark:text-gray-400">m</span>
       </div>
@@ -75,7 +75,7 @@ export const DurationPicker: React.FC<DurationPickerProps> = ({
           onChange={(e) => handleChange('seconds', e.target.value)}
           min="0"
           max="59"
-          className="w-14 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-sm focus:border-blueprint-500 focus:ring-blueprint-500 text-center text-sm"
+          className="w-16 h-11 rounded-md border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm focus:border-blueprint-500 focus:ring-blueprint-500 hover:border-gray-400 dark:hover:border-gray-500 text-center text-base px-2 py-3"
         />
         <span className="text-xs text-gray-600 dark:text-gray-400">s</span>
       </div>

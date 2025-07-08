@@ -9,9 +9,13 @@ import { Pagination } from "./components/Pagination";
 import { ToastContainer } from "./components/Toast";
 import { EmptyState } from "./components/EmptyState";
 import { Statistics } from "./components/Statistics";
+import { RuleModal } from "./components/config/RuleModal";
 import { useAuditLogWithSSE } from "./hooks/useAuditLogWithSSE";
 import { useToast } from "./hooks/useToast";
+import { useConfiguration } from "./hooks/useConfiguration";
+import { useConfigurationRules } from "./hooks/useConfigurationRules";
 import type { AuditLogState, AuditLogEntry } from "./types/audit";
+import type { ApprovalRule } from "./types/config";
 import { Header } from "./components/layout/header";
 import { Footer } from "./components/layout/footer";
 import { Button } from "./components/ui/button";
@@ -31,9 +35,13 @@ function AppFinal() {
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
   const [showStats, setShowStats] = useState(true);
+  const [showCreateRuleModal, setShowCreateRuleModal] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState<AuditLogEntry | null>(null);
 
   const navigate = useNavigate();
   const { toasts, removeToast, info, success, error: showError } = useToast();
+  const { config } = useConfiguration();
+  const rulesApi = useConfigurationRules();
   const entriesRef = useRef<Set<string>>(new Set());
 
   const {
@@ -118,16 +126,21 @@ function AppFinal() {
   }, []);
 
   const handleCreateRule = useCallback((entry: AuditLogEntry) => {
-    navigate("/config", {
-      state: {
-        createRuleData: {
-          toolName: entry.tool_name,
-          agentIdentity: entry.agent_identity,
-          action: "review" as const,
-        },
-      },
-    });
-  }, [navigate]);
+    setSelectedEntry(entry);
+    setShowCreateRuleModal(true);
+  }, []);
+
+  const handleSaveRule = useCallback(async (rule: ApprovalRule) => {
+    const result = await rulesApi.createRule(rule);
+    
+    if (result.success) {
+      success("Rule created successfully");
+      setShowCreateRuleModal(false);
+      setSelectedEntry(null);
+    } else {
+      showError(result.error || "Failed to create rule");
+    }
+  }, [rulesApi, success, showError]);
 
   useEffect(() => {
     // Check API health
@@ -298,6 +311,24 @@ function AppFinal() {
 
       <Footer />
       <ToastContainer toasts={toasts} removeToast={removeToast} />
+
+      {/* Create Rule Modal */}
+      {showCreateRuleModal && selectedEntry && config && (
+        <RuleModal
+          isOpen={showCreateRuleModal}
+          onClose={() => {
+            setShowCreateRuleModal(false);
+            setSelectedEntry(null);
+          }}
+          onSave={handleSaveRule}
+          existingPriorities={config.approvals.rules.map(r => r.priority)}
+          prePopulatedData={{
+            toolName: selectedEntry.tool_name,
+            agentIdentity: selectedEntry.agent_identity,
+            action: selectedEntry.state === "APPROVED" ? "approve" : "deny" as const,
+          }}
+        />
+      )}
     </div>
   );
 }

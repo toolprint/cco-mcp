@@ -81,7 +81,7 @@ export function Configuration() {
     }
   };
 
-  const handleCreateRule = async (rule: Omit<ApprovalRule, "id">) => {
+  const handleCreateRule = async (rule: ApprovalRule) => {
     const result = await rulesApi.createRule(rule);
     
     if (result.success) {
@@ -107,10 +107,6 @@ export function Configuration() {
   };
 
   const handleDeleteRule = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this rule?")) {
-      return;
-    }
-
     const result = await rulesApi.deleteRule(id);
     
     if (result.success) {

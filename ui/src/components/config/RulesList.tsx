@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { Card, CardContent } from "../ui/card";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
+import { Toggle } from "../ui/toggle";
+import { ConfirmationModal } from "../ui/confirmation-modal";
 import { Plus, Edit2, Trash2, GripVertical, TestTube, CheckCircle, XCircle } from "lucide-react";
 import { RuleModal } from "./RuleModal";
 import { cn } from "../../lib/utils";
@@ -25,6 +27,12 @@ export const RulesList: React.FC<RulesListProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<ApprovalRule | null>(null);
   const [testingRuleId, setTestingRuleId] = useState<string | null>(null);
+  const [selectedRules, setSelectedRules] = useState<Set<string>>(new Set());
+  const [draggedRule, setDraggedRule] = useState<string | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [dropPosition, setDropPosition] = useState<'before' | 'after' | null>(null);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [rulesToDelete, setRulesToDelete] = useState<Set<string>>(new Set());
 
   const sortedRules = [...rules].sort((a, b) => a.priority - b.priority);
 
@@ -63,6 +71,154 @@ export const RulesList: React.FC<RulesListProps> = ({
       alert(`Test Result: ${result.matched ? 'Matched' : 'No match'} - ${result.reason}`);
       setTestingRuleId(null);
     }, 500);
+  };
+
+  const handleSelectRule = (ruleId: string, selected: boolean) => {
+    const newSelected = new Set(selectedRules);
+    if (selected) {
+      newSelected.add(ruleId);
+    } else {
+      newSelected.delete(ruleId);
+    }
+    setSelectedRules(newSelected);
+  };
+
+  const handleSelectAll = (selected: boolean) => {
+    if (selected) {
+      setSelectedRules(new Set(sortedRules.map(rule => rule.id)));
+    } else {
+      setSelectedRules(new Set());
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    const count = selectedRules.size;
+    if (count === 0) return;
+    
+    setRulesToDelete(selectedRules);
+    setShowDeleteConfirmation(true);
+  };
+
+  const confirmDelete = () => {
+    rulesToDelete.forEach(ruleId => onDeleteRule(ruleId));
+    setSelectedRules(new Set());
+    setRulesToDelete(new Set());
+    setShowDeleteConfirmation(false);
+  };
+
+  const cancelDelete = () => {
+    setRulesToDelete(new Set());
+    setShowDeleteConfirmation(false);
+  };
+
+  const handleDragStart = (e: React.DragEvent, ruleId: string) => {
+    setDraggedRule(ruleId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    
+    // Calculate drop position based on cursor position within the card
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const mouseY = e.clientY;
+    const cardMiddle = rect.top + rect.height / 2;
+    
+    const position = mouseY < cardMiddle ? 'before' : 'after';
+    
+    setDragOverIndex(index);
+    setDropPosition(position);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Only clear if we're actually leaving the card area
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
+    
+    if (mouseX < rect.left || mouseX > rect.right || mouseY < rect.top || mouseY > rect.bottom) {
+      setDragOverIndex(null);
+      setDropPosition(null);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    
+    if (!draggedRule || !dropPosition) return;
+    
+    const draggedIndex = sortedRules.findIndex(rule => rule.id === draggedRule);
+    if (draggedIndex === -1) {
+      setDraggedRule(null);
+      setDragOverIndex(null);
+      setDropPosition(null);
+      return;
+    }
+
+    // Calculate actual insert position based on drop position
+    let insertIndex = targetIndex;
+    if (dropPosition === 'after') {
+      insertIndex = targetIndex + 1;
+    }
+    
+    // Adjust for the fact that we're removing the dragged item first
+    if (draggedIndex < insertIndex) {
+      insertIndex = insertIndex - 1;
+    }
+
+    // Don't do anything if dropping in the same position
+    if (draggedIndex === insertIndex) {
+      setDraggedRule(null);
+      setDragOverIndex(null);
+      setDropPosition(null);
+      return;
+    }
+
+    // Reorder rules by updating their priorities
+    const newSortedRules = [...sortedRules];
+    const [draggedRuleObj] = newSortedRules.splice(draggedIndex, 1);
+    newSortedRules.splice(insertIndex, 0, draggedRuleObj);
+
+    // Update priorities based on new order - use temporary high values first to avoid conflicts
+    const updates: Array<{ id: string; priority: number }> = [];
+    newSortedRules.forEach((rule, index) => {
+      const newPriority = (index + 1) * 10;
+      if (rule.priority !== newPriority) {
+        updates.push({ id: rule.id, priority: newPriority });
+      }
+    });
+
+    // Apply updates sequentially to avoid priority conflicts
+    const applyUpdates = async () => {
+      // First, assign temporary high priorities to avoid conflicts
+      const tempUpdates = updates.map((update, index) => ({
+        id: update.id,
+        priority: 10000 + index, // Use high temporary values
+      }));
+
+      // Apply temporary priorities
+      for (const update of tempUpdates) {
+        await onUpdateRule(update.id, { priority: update.priority });
+      }
+
+      // Then apply final priorities
+      for (const update of updates) {
+        await onUpdateRule(update.id, { priority: update.priority });
+      }
+    };
+
+    applyUpdates().catch(console.error);
+
+    setDraggedRule(null);
+    setDragOverIndex(null);
+    setDropPosition(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedRule(null);
+    setDragOverIndex(null);
+    setDropPosition(null);
   };
 
   const getActionBadgeVariant = (action: string) => {
@@ -104,13 +260,25 @@ export const RulesList: React.FC<RulesListProps> = ({
                 Rules are evaluated in priority order. First match wins.
               </p>
             </div>
-            <Button
-              onClick={handleCreateRule}
-              className="gap-2 bg-blueprint-600 hover:bg-blueprint-700 text-white"
-            >
-              <Plus className="h-4 w-4" />
-              Add Rule
-            </Button>
+            <div className="flex items-center gap-3">
+              {selectedRules.size > 0 && (
+                <Button
+                  onClick={handleDeleteSelected}
+                  variant="outline"
+                  className="gap-2 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-400 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950 dark:hover:text-red-300 dark:hover:border-red-600"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete Rules ({selectedRules.size})
+                </Button>
+              )}
+              <Button
+                onClick={handleCreateRule}
+                className="gap-2 bg-blueprint-600 hover:bg-blueprint-700 text-white"
+              >
+                <Plus className="h-4 w-4" />
+                Add Rule
+              </Button>
+            </div>
           </div>
 
           {sortedRules.length === 0 ? (
@@ -129,24 +297,46 @@ export const RulesList: React.FC<RulesListProps> = ({
             </div>
           ) : (
             <div className="space-y-3">
-              {sortedRules.map((rule) => (
-                <div
-                  key={rule.id}
-                  className={cn(
-                    "flex items-start gap-3 p-4 rounded-lg border transition-colors",
-                    rule.enabled !== false
-                      ? "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
-                      : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 opacity-60"
+              {sortedRules.map((rule, index) => (
+                <div key={rule.id} className="relative">
+                  {/* Drop indicator line before this card */}
+                  {dragOverIndex === index && dropPosition === 'before' && (
+                    <div className="absolute -top-2 left-0 right-0 z-10">
+                      <div className="h-1 bg-blueprint-500 rounded-full shadow-lg" />
+                      <div className="absolute left-0 top-0 -translate-y-1 w-3 h-3 bg-blueprint-500 rounded-full" />
+                    </div>
                   )}
-                >
-                  {/* Drag Handle */}
-                  <div className="pt-1 cursor-move text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                    <GripVertical className="h-5 w-5" />
-                  </div>
-
-                  {/* Rule Content */}
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between">
+                  
+                  <div
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, rule.id)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, index)}
+                    onDragEnd={handleDragEnd}
+                    className={cn(
+                      "relative p-4 rounded-lg border transition-colors",
+                      rule.enabled !== false
+                        ? "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+                        : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 opacity-60",
+                      draggedRule === rule.id && "opacity-50"
+                    )}
+                  >
+                  {/* Top Row: Checkbox + Drag Handle + Title/Badges + Priority + Toggle */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      {/* Selection Checkbox */}
+                      <input
+                        type="checkbox"
+                        checked={selectedRules.has(rule.id)}
+                        onChange={(e) => handleSelectRule(rule.id, e.target.checked)}
+                        className="rounded border-gray-300 text-blueprint-600 focus:ring-blueprint-500"
+                      />
+                      {/* Drag Handle */}
+                      <div className="cursor-move text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <GripVertical className="h-5 w-5" />
+                      </div>
+                      {/* Rule Title and Badges */}
                       <div>
                         <div className="flex items-center gap-2">
                           <h3 className="font-medium text-gray-900 dark:text-white">
@@ -158,105 +348,100 @@ export const RulesList: React.FC<RulesListProps> = ({
                           >
                             {rule.action}
                           </Badge>
-                          {rule.enabled === false && (
-                            <Badge variant="outline" className="text-xs">
-                              Disabled
-                            </Badge>
-                          )}
                         </div>
-                        {rule.description && (
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            {rule.description}
-                          </p>
-                        )}
                       </div>
-                      <div className="flex items-center gap-2 ml-4">
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          Priority: {rule.priority}
+                    </div>
+
+                    {/* Priority + Toggle */}
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        Priority: {rule.priority}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Toggle
+                          checked={rule.enabled !== false}
+                          onChange={(enabled) => onUpdateRule(rule.id, { enabled })}
+                        />
+                        <span className="text-xs text-gray-600 dark:text-gray-400">
+                          {rule.enabled !== false ? "Enabled" : "Disabled"}
                         </span>
                       </div>
                     </div>
-
-                    {/* Match Criteria Summary */}
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {rule.match.toolName && (
-                        <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs">
-                          <span className="font-medium">Tool:</span>
-                          <span>{rule.match.toolName.value}</span>
-                          <span className="text-blue-600 dark:text-blue-400">
-                            ({getPatternTypeLabel(rule.match.toolName.type)})
-                          </span>
-                        </div>
-                      )}
-                      {rule.match.agentIdentity && (
-                        <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-xs">
-                          <span className="font-medium">Agent:</span>
-                          <span>{rule.match.agentIdentity.value}</span>
-                          <span className="text-green-600 dark:text-green-400">
-                            ({getPatternTypeLabel(rule.match.agentIdentity.type)})
-                          </span>
-                        </div>
-                      )}
-                      {rule.match.conditions && rule.match.conditions.length > 0 && (
-                        <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 text-xs">
-                          <span className="font-medium">Conditions:</span>
-                          <span>{rule.match.conditions.length}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Actions */}
-                    <div className="mt-3 flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleEditRule(rule)}
-                        className="gap-1"
-                      >
-                        <Edit2 className="h-3 w-3" />
-                        Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleTestRule(rule.id)}
-                        disabled={testingRuleId === rule.id}
-                        className="gap-1"
-                      >
-                        <TestTube className="h-3 w-3" />
-                        {testingRuleId === rule.id ? "Testing..." : "Test"}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => onDeleteRule(rule.id)}
-                        className="gap-1 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                        Delete
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => onUpdateRule(rule.id, { enabled: !rule.enabled })}
-                        className="gap-1"
-                      >
-                        {rule.enabled !== false ? (
-                          <>
-                            <XCircle className="h-3 w-3" />
-                            Disable
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="h-3 w-3" />
-                            Enable
-                          </>
-                        )}
-                      </Button>
-                    </div>
                   </div>
+
+                  {/* Description */}
+                  {rule.description && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 ml-11">
+                      {rule.description}
+                    </p>
+                  )}
+
+                  {/* Match Criteria Summary */}
+                  <div className="mb-3 ml-11 flex flex-wrap gap-2">
+                    {rule.match.toolName && (
+                      <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs">
+                        <span className="font-medium">Tool:</span>
+                        <span>{rule.match.toolName.value}</span>
+                        <span className="text-blue-600 dark:text-blue-400">
+                          ({getPatternTypeLabel(rule.match.toolName.type)})
+                        </span>
+                      </div>
+                    )}
+                    {rule.match.agentIdentity && (
+                      <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-xs">
+                        <span className="font-medium">Agent:</span>
+                        <span>{rule.match.agentIdentity.value}</span>
+                        <span className="text-green-600 dark:text-green-400">
+                          ({getPatternTypeLabel(rule.match.agentIdentity.type)})
+                        </span>
+                      </div>
+                    )}
+                    {rule.match.conditions && rule.match.conditions.length > 0 && (
+                      <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 text-xs">
+                        <span className="font-medium">Conditions:</span>
+                        <span>{rule.match.conditions.length}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Bottom Right Actions */}
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      size="sm"
+                      disabled
+                      className="gap-1 bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                    >
+                      <TestTube className="h-3 w-3" />
+                      Test
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handleEditRule(rule)}
+                      className="gap-1 bg-blueprint-500 hover:bg-blueprint-600 text-white"
+                    >
+                      <Edit2 className="h-3 w-3" />
+                      Edit
+                    </Button>
+                  </div>
+                  </div>
+                  
+                  {/* Drop indicator line after this card */}
+                  {dragOverIndex === index && dropPosition === 'after' && (
+                    <div className="absolute -bottom-2 left-0 right-0 z-10">
+                      <div className="h-1 bg-blueprint-500 rounded-full shadow-lg" />
+                      <div className="absolute right-0 top-0 -translate-y-1 w-3 h-3 bg-blueprint-500 rounded-full" />
+                    </div>
+                  )}
                 </div>
               ))}
+              
+              {/* Drop indicator for bottom of list */}
+              {draggedRule && dragOverIndex === sortedRules.length - 1 && dropPosition === 'after' && (
+                <div className="relative">
+                  <div className="h-1 bg-blueprint-500 rounded-full shadow-lg" />
+                  <div className="absolute right-0 top-0 -translate-y-1 w-3 h-3 bg-blueprint-500 rounded-full" />
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -269,6 +454,18 @@ export const RulesList: React.FC<RulesListProps> = ({
         onSave={handleSaveRule}
         rule={editingRule}
         existingPriorities={rules.map(r => r.priority)}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteConfirmation}
+        onClose={cancelDelete}
+        onConfirm={confirmDelete}
+        title="Delete Rules"
+        message={`Are you sure you want to delete ${rulesToDelete.size} rule${rulesToDelete.size > 1 ? 's' : ''}? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
       />
     </>
   );

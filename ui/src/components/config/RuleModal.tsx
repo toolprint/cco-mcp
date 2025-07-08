@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { X, Info } from "lucide-react";
 import { Button } from "../ui/button";
 import { DurationPicker } from "../ui/duration-picker";
 import type { ApprovalRule, ApprovalAction, MatchPatternType } from "../../types/config";
@@ -7,7 +7,7 @@ import type { ApprovalRule, ApprovalAction, MatchPatternType } from "../../types
 interface RuleModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (rule: Omit<ApprovalRule, "id">) => void;
+  onSave: (rule: ApprovalRule) => void;
   rule?: ApprovalRule | null;
   existingPriorities: number[];
   prePopulatedData?: {
@@ -90,13 +90,31 @@ export const RuleModal: React.FC<RuleModalProps> = ({
     } else if (prePopulatedData) {
       // Creating new rule with pre-populated data
       const nextPriority = Math.max(...existingPriorities, 0) + 10;
+      const action = prePopulatedData.action || "review";
+      const toolName = prePopulatedData.toolName || "";
+      const agentIdentity = prePopulatedData.agentIdentity || "";
+      
+      // Generate smart rule name and description based on action
+      let ruleName = "";
+      let ruleDescription = "";
+      
+      if (action === "approve") {
+        ruleName = `Auto-approve ${toolName}`;
+        ruleDescription = `Automatically approve requests for the ${toolName} tool based on the previous approval decision.`;
+      } else if (action === "deny") {
+        ruleName = `Auto-deny ${toolName}`;
+        ruleDescription = `Automatically deny requests for the ${toolName} tool based on the previous denial decision.`;
+      } else {
+        ruleName = `Review ${toolName}`;
+        ruleDescription = `Require manual review for requests to the ${toolName} tool.`;
+      }
+      
       setFormData(prev => ({
         ...prev,
         priority: nextPriority,
-        action: prePopulatedData.action || "review",
-        name: prePopulatedData.toolName && prePopulatedData.agentIdentity 
-          ? `Allow ${prePopulatedData.toolName} for ${prePopulatedData.agentIdentity}`
-          : "",
+        action,
+        name: ruleName,
+        description: ruleDescription,
         toolName: prePopulatedData.toolName ? {
           enabled: true,
           type: "exact",
@@ -104,7 +122,7 @@ export const RuleModal: React.FC<RuleModalProps> = ({
           caseSensitive: false,
         } : prev.toolName,
         agentIdentity: prePopulatedData.agentIdentity ? {
-          enabled: true,
+          enabled: false, // Disabled for now as per requirement
           type: "exact",
           value: prePopulatedData.agentIdentity,
           caseSensitive: false,
@@ -119,15 +137,27 @@ export const RuleModal: React.FC<RuleModalProps> = ({
 
   if (!isOpen) return null;
 
+  // Generate a simple ID from the rule name
+  const generateRuleId = (name: string): string => {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '') // Remove special chars except spaces and hyphens
+      .replace(/\s+/g, '-') // Replace spaces with hyphens
+      .replace(/-+/g, '-') // Replace multiple hyphens with single
+      .replace(/^-|-$/g, '') // Remove leading/trailing hyphens
+      + '-' + Date.now().toString().slice(-6); // Add timestamp suffix for uniqueness
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const ruleToSave: Omit<ApprovalRule, "id"> = {
+    const ruleToSave: ApprovalRule = {
+      id: generateRuleId(formData.name),
       name: formData.name,
       description: formData.description || undefined,
       priority: formData.priority,
       action: formData.action,
-      enabled: formData.enabled,
+      enabled: true, // Always create rules as enabled
       match: {
         toolName: formData.toolName.enabled ? {
           type: formData.toolName.type,
@@ -178,7 +208,7 @@ export const RuleModal: React.FC<RuleModalProps> = ({
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                className="w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm focus:border-blueprint-500 focus:ring-blueprint-500"
+                className="w-full h-11 text-base rounded-md border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-3 shadow-sm focus:border-blueprint-500 focus:ring-blueprint-500 hover:border-gray-400 dark:hover:border-gray-500"
                 required
               />
             </div>
@@ -190,46 +220,12 @@ export const RuleModal: React.FC<RuleModalProps> = ({
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                className="w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm focus:border-blueprint-500 focus:ring-blueprint-500"
-                rows={2}
+                className="w-full min-h-[120px] text-base rounded-md border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-3 shadow-sm focus:border-blueprint-500 focus:ring-blueprint-500 hover:border-gray-400 dark:hover:border-gray-500 resize-y"
+                rows={4}
+                placeholder="Describe the purpose and scope of this rule..."
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Priority <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  value={formData.priority}
-                  onChange={(e) => setFormData(prev => ({ ...prev, priority: parseInt(e.target.value) || 0 }))}
-                  className="w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm focus:border-blueprint-500 focus:ring-blueprint-500"
-                  required
-                  min="0"
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Lower numbers have higher priority
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Enabled
-                </label>
-                <label className="flex items-center gap-2 mt-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.enabled}
-                    onChange={(e) => setFormData(prev => ({ ...prev, enabled: e.target.checked }))}
-                    className="rounded border-gray-300 text-blueprint-600 focus:ring-blueprint-500"
-                  />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    Rule is active
-                  </span>
-                </label>
-              </div>
-            </div>
           </div>
 
           {/* Match Criteria */}
@@ -262,7 +258,7 @@ export const RuleModal: React.FC<RuleModalProps> = ({
                         ...prev, 
                         toolName: { ...prev.toolName, type: e.target.value as MatchPatternType }
                       }))}
-                      className="rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm focus:border-blueprint-500 focus:ring-blueprint-500"
+                      className="h-11 text-base rounded-md border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-3 shadow-sm focus:border-blueprint-500 focus:ring-blueprint-500 hover:border-gray-400 dark:hover:border-gray-500"
                     >
                       <option value="exact">Exact Match</option>
                       <option value="wildcard">Wildcard (*,?)</option>
@@ -276,7 +272,7 @@ export const RuleModal: React.FC<RuleModalProps> = ({
                         toolName: { ...prev.toolName, value: e.target.value }
                       }))}
                       placeholder="e.g., Read, Write*, ^(Read|Write)$"
-                      className="flex-1 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm focus:border-blueprint-500 focus:ring-blueprint-500"
+                      className="flex-1 h-11 text-base rounded-md border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-3 shadow-sm focus:border-blueprint-500 focus:ring-blueprint-500 hover:border-gray-400 dark:hover:border-gray-500 placeholder-gray-500 dark:placeholder-gray-400"
                       required={formData.toolName.enabled}
                     />
                   </div>
@@ -300,7 +296,7 @@ export const RuleModal: React.FC<RuleModalProps> = ({
 
             {/* Agent Identity */}
             <div className="space-y-2">
-              <label className="flex items-center gap-2">
+              <label className="flex items-center gap-2 opacity-50 cursor-not-allowed">
                 <input
                   type="checkbox"
                   checked={formData.agentIdentity.enabled}
@@ -309,10 +305,20 @@ export const RuleModal: React.FC<RuleModalProps> = ({
                     agentIdentity: { ...prev.agentIdentity, enabled: e.target.checked }
                   }))}
                   className="rounded border-gray-300 text-blueprint-600 focus:ring-blueprint-500"
+                  disabled
                 />
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Match Agent Identity
                 </span>
+                <div 
+                  className="group relative"
+                  title="Coming Soon - Agent-specific rules will be available in a future update"
+                >
+                  <Info className="h-4 w-4 text-gray-400" />
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
+                    Coming Soon
+                  </div>
+                </div>
               </label>
               
               {formData.agentIdentity.enabled && (
@@ -324,7 +330,7 @@ export const RuleModal: React.FC<RuleModalProps> = ({
                         ...prev, 
                         agentIdentity: { ...prev.agentIdentity, type: e.target.value as MatchPatternType }
                       }))}
-                      className="rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm focus:border-blueprint-500 focus:ring-blueprint-500"
+                      className="h-11 text-base rounded-md border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-3 shadow-sm focus:border-blueprint-500 focus:ring-blueprint-500 hover:border-gray-400 dark:hover:border-gray-500"
                     >
                       <option value="exact">Exact Match</option>
                       <option value="wildcard">Wildcard (*,?)</option>
@@ -338,7 +344,7 @@ export const RuleModal: React.FC<RuleModalProps> = ({
                         agentIdentity: { ...prev.agentIdentity, value: e.target.value }
                       }))}
                       placeholder="e.g., claude-code, agent-*"
-                      className="flex-1 rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm focus:border-blueprint-500 focus:ring-blueprint-500"
+                      className="flex-1 h-11 text-base rounded-md border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-3 shadow-sm focus:border-blueprint-500 focus:ring-blueprint-500 hover:border-gray-400 dark:hover:border-gray-500 placeholder-gray-500 dark:placeholder-gray-400"
                       required={formData.agentIdentity.enabled}
                     />
                   </div>
