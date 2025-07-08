@@ -4,18 +4,17 @@ import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Toggle } from "../ui/toggle";
 import { ConfirmationModal } from "../ui/confirmation-modal";
-import { Plus, Edit2, Trash2, GripVertical, TestTube, CheckCircle, XCircle, RotateCcw } from "lucide-react";
+import { Plus, Edit2, Trash2, GripVertical, RotateCcw, Code } from "lucide-react";
 import { RuleModal } from "./RuleModal";
 import { priorityUtils } from "../../utils/priority";
 import { cn } from "../../lib/utils";
-import type { ApprovalRule, RuleTestRequest } from "../../types/config";
+import type { ApprovalRule, ToolMatch } from "../../types/config";
 
 interface RulesListProps {
   rules: ApprovalRule[];
   onCreateRule: (rule: Omit<ApprovalRule, "id">) => void;
   onUpdateRule: (id: string, rule: Partial<ApprovalRule>) => void;
   onDeleteRule: (id: string) => void;
-  onTestRule: (test: RuleTestRequest) => Promise<{ matched: boolean; rule?: ApprovalRule; reason: string }>;
   onRebalancePriorities?: (rules: ApprovalRule[]) => Promise<{ success: boolean; error?: string }>;
 }
 
@@ -24,12 +23,10 @@ export const RulesList: React.FC<RulesListProps> = ({
   onCreateRule,
   onUpdateRule,
   onDeleteRule,
-  onTestRule,
   onRebalancePriorities,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<ApprovalRule | null>(null);
-  const [testingRuleId, setTestingRuleId] = useState<string | null>(null);
   const [selectedRules, setSelectedRules] = useState<Set<string>>(new Set());
   const [draggedRule, setDraggedRule] = useState<string | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -69,23 +66,6 @@ export const RulesList: React.FC<RulesListProps> = ({
     setIsModalOpen(false);
   };
 
-  const handleTestRule = async (ruleId: string) => {
-    setTestingRuleId(ruleId);
-    // For demo purposes, we'll use a sample test
-    const testData: RuleTestRequest = {
-      toolName: "Read",
-      agentIdentity: "claude-code",
-      input: { file_path: "/tmp/test.txt" },
-    };
-    
-    const result = await onTestRule(testData);
-    
-    // Show result (in a real app, this would be a proper UI)
-    setTimeout(() => {
-      alert(`Test Result: ${result.matched ? 'Matched' : 'No match'} - ${result.reason}`);
-      setTestingRuleId(null);
-    }, 500);
-  };
 
   const handleSelectRule = (ruleId: string, selected: boolean) => {
     const newSelected = new Set(selectedRules);
@@ -203,20 +183,9 @@ export const RulesList: React.FC<RulesListProps> = ({
       }
     });
 
-    // Apply updates sequentially to avoid priority conflicts
+    // Apply updates in a single batch since backend now auto-fixes conflicts
     const applyUpdates = async () => {
-      // First, assign temporary high priorities to avoid conflicts
-      const tempUpdates = updates.map((update, index) => ({
-        id: update.id,
-        priority: 10000 + index, // Use high temporary values
-      }));
-
-      // Apply temporary priorities
-      for (const update of tempUpdates) {
-        await onUpdateRule(update.id, { priority: update.priority });
-      }
-
-      // Then apply final priorities
+      // Apply all priority updates at once - backend will handle conflicts
       for (const update of updates) {
         await onUpdateRule(update.id, { priority: update.priority });
       }
@@ -248,17 +217,26 @@ export const RulesList: React.FC<RulesListProps> = ({
     }
   };
 
-  const getPatternTypeLabel = (type: string) => {
-    switch (type) {
-      case "exact":
-        return "Exact";
-      case "wildcard":
-        return "Wildcard";
-      case "regex":
-        return "Regex";
-      default:
-        return type;
+  const formatToolMatch = (tool: ToolMatch): string => {
+    if (tool.type === 'builtin') {
+      const specifier = tool.optionalSpecifier || "";
+      return specifier ? `${tool.toolName}(${specifier})` : tool.toolName;
+    } else {
+      // MCP tool
+      const base = `mcp__${tool.serverName}`;
+      
+      if (!tool.toolName) {
+        // Match all tools on the server - no trailing __*
+        return base;
+      }
+      
+      const specifier = tool.optionalSpecifier || "*";
+      return `${base}__${tool.toolName}(${specifier})`;
     }
+  };
+
+  const getToolTypeLabel = (tool: ToolMatch): string => {
+    return tool.type === 'builtin' ? 'Built-in' : 'MCP';
   };
 
   return (
@@ -322,6 +300,19 @@ export const RulesList: React.FC<RulesListProps> = ({
             </div>
           ) : (
             <div className="space-y-3">
+              {/* Select All Checkbox */}
+              <div className="flex items-center gap-2 pb-2 border-b border-gray-200 dark:border-gray-700">
+                <input
+                  type="checkbox"
+                  checked={selectedRules.size === sortedRules.length && sortedRules.length > 0}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
+                  className="rounded border-gray-300 text-blueprint-600 focus:ring-blueprint-500"
+                />
+                <label className="text-sm text-gray-600 dark:text-gray-400">
+                  Select all ({sortedRules.length} rule{sortedRules.length !== 1 ? 's' : ''})
+                </label>
+              </div>
+              
               {sortedRules.map((rule, index) => (
                 <div key={rule.id} className="relative">
                   {/* Drop indicator line before this card */}
@@ -403,42 +394,32 @@ export const RulesList: React.FC<RulesListProps> = ({
 
                   {/* Match Criteria Summary */}
                   <div className="mb-3 ml-11 flex flex-wrap gap-2">
-                    {rule.match.toolName && (
+                    {rule.match.tool && (
                       <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs">
-                        <span className="font-medium">Tool:</span>
-                        <span>{rule.match.toolName.value}</span>
-                        <span className="text-blue-600 dark:text-blue-400">
-                          ({getPatternTypeLabel(rule.match.toolName.type)})
-                        </span>
+                        <Code className="h-3 w-3" />
+                        <span className="font-mono">{formatToolMatch(rule.match.tool)}</span>
+                        <Badge variant="outline" className="ml-1 text-[10px] px-1 py-0">
+                          {getToolTypeLabel(rule.match.tool)}
+                        </Badge>
                       </div>
                     )}
                     {rule.match.agentIdentity && (
-                      <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-xs">
+                      <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-xs opacity-50">
                         <span className="font-medium">Agent:</span>
-                        <span>{rule.match.agentIdentity.value}</span>
-                        <span className="text-green-600 dark:text-green-400">
-                          ({getPatternTypeLabel(rule.match.agentIdentity.type)})
-                        </span>
+                        <span>{rule.match.agentIdentity}</span>
+                        <span className="text-green-600 dark:text-green-400">(Coming Soon)</span>
                       </div>
                     )}
-                    {rule.match.conditions && rule.match.conditions.length > 0 && (
-                      <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 text-xs">
-                        <span className="font-medium">Conditions:</span>
-                        <span>{rule.match.conditions.length}</span>
+                    {rule.match.inputParameters && (
+                      <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 text-xs opacity-50">
+                        <span className="font-medium">Input Params</span>
+                        <span className="text-purple-600 dark:text-purple-400">(Coming Soon)</span>
                       </div>
                     )}
                   </div>
 
                   {/* Bottom Right Actions */}
                   <div className="flex justify-end gap-2">
-                    <Button
-                      size="sm"
-                      disabled
-                      className="gap-1 bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed"
-                    >
-                      <TestTube className="h-3 w-3" />
-                      Test
-                    </Button>
                     <Button
                       size="sm"
                       onClick={() => handleEditRule(rule)}

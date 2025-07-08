@@ -14,6 +14,7 @@ import { useAuditLogWithSSE } from "./hooks/useAuditLogWithSSE";
 import { useToast } from "./hooks/useToast";
 import { useConfiguration } from "./hooks/useConfiguration";
 import { useConfigurationRules } from "./hooks/useConfigurationRules";
+import { migrateRules } from "./utils/ruleMigration";
 import type { AuditLogState, AuditLogEntry } from "./types/audit";
 import type { ApprovalRule } from "./types/config";
 import { Header } from "./components/layout/header";
@@ -321,7 +322,7 @@ function AppFinal() {
             setSelectedEntry(null);
           }}
           onSave={handleSaveRule}
-          existingPriorities={config.approvals.rules.map(r => r.priority)}
+          existingPriorities={migrateRules(config.approvals.rules).map(r => r.priority)}
           prePopulatedData={{
             toolName: selectedEntry.tool_name,
             agentIdentity: selectedEntry.agent_identity,

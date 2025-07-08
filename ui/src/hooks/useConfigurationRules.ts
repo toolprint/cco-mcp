@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
-import { priorityUtils, validatePriorityUpdate } from "../utils/priority";
+import { priorityUtils } from "../utils/priority";
+import { ruleToServerFormat } from "../utils/ruleMigration";
 import type { ApprovalRule, RuleTestRequest, RuleTestResponse } from "../types/config";
 
 export function useConfigurationRules() {
@@ -32,16 +33,29 @@ export function useConfigurationRules() {
     setError(null);
     
     try {
+      console.log("Creating rule (new format):", rule);
+      // Convert to server format
+      const serverRule = ruleToServerFormat(rule);
+      console.log("Sending to server (old format):", serverRule);
+      
       const response = await fetch("/api/config/rules", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(rule),
+        body: JSON.stringify(serverRule),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error("Rule creation failed:", errorData);
+        if (errorData.details && Array.isArray(errorData.details)) {
+          console.error("Validation errors:", errorData.details);
+          const detailMessages = errorData.details.map((d: any) => 
+            typeof d === 'string' ? d : d.message || JSON.stringify(d)
+          ).join(', ');
+          throw new Error(`${errorData.error}: ${detailMessages}`);
+        }
         throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
 
@@ -61,16 +75,8 @@ export function useConfigurationRules() {
     setError(null);
     
     try {
-      // If updating priority, validate it doesn't conflict
-      if (rule.priority !== undefined) {
-        const currentRules = await getRules();
-        const validation = validatePriorityUpdate(id, rule.priority, currentRules);
-        
-        if (!validation.isValid && validation.suggestedPriority) {
-          // Use the suggested priority to avoid conflicts
-          rule.priority = validation.suggestedPriority;
-        }
-      }
+      // Note: Backend now auto-fixes priority conflicts, so we can remove client-side validation
+      // The backend will automatically assign a safe priority if there's a conflict
 
       const response = await fetch(`/api/config/rules/${id}`, {
         method: "PUT",

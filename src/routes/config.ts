@@ -206,11 +206,22 @@ export function createConfigRoutes(): Router {
         });
       }
 
-      // Check for duplicate priority
+      // Auto-fix duplicate priority if needed
       if (config.approvals.rules.some(r => r.priority === validation.data.priority)) {
-        return res.status(409).json({
-          error: "Rule with this priority already exists",
-        });
+        // Find the next available priority
+        const existingPriorities = config.approvals.rules.map(r => r.priority).sort((a, b) => a - b);
+        let newPriority = validation.data.priority;
+        
+        // Keep incrementing by 10 until we find an unused priority
+        while (existingPriorities.includes(newPriority)) {
+          newPriority += 10;
+        }
+        
+        validation.data.priority = newPriority;
+        logger.info({ 
+          originalPriority: req.body.priority, 
+          assignedPriority: newPriority 
+        }, "Auto-assigned new priority to avoid conflict");
       }
 
       configService.addRule(validation.data);
@@ -264,11 +275,26 @@ export function createConfigRoutes(): Router {
         });
       }
 
-      // Check for duplicate priority (excluding current rule)
+      // Auto-fix duplicate priority if needed (excluding current rule)
       if (config.approvals.rules.some(r => r.id !== id && r.priority === validation.data.priority)) {
-        return res.status(409).json({
-          error: "Rule with this priority already exists",
-        });
+        // Find the next available priority
+        const existingPriorities = config.approvals.rules
+          .filter(r => r.id !== id)
+          .map(r => r.priority)
+          .sort((a, b) => a - b);
+        let newPriority = validation.data.priority;
+        
+        // Keep incrementing by 10 until we find an unused priority
+        while (existingPriorities.includes(newPriority)) {
+          newPriority += 10;
+        }
+        
+        validation.data.priority = newPriority;
+        logger.info({ 
+          ruleId: id,
+          originalPriority: req.body.priority, 
+          assignedPriority: newPriority 
+        }, "Auto-assigned new priority to avoid conflict during update");
       }
 
       configService.updateRule(id, validation.data);

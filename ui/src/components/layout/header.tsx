@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Shield, Wifi, WifiOff, AlertTriangle } from "lucide-react";
+import { Wifi, WifiOff, AlertTriangle } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { Badge } from "../ui/badge";
 import { cn } from "../../lib/utils";
@@ -67,7 +67,7 @@ const HeaderBase: React.FC<HeaderProps> = ({ isHealthy, configRefreshTrigger }) 
             {/* Logo and Title */}
             <div className="flex items-center">
               <div className="flex items-center p-2.5 bg-blueprint-50 dark:bg-blueprint-900/20 rounded-lg border border-blueprint-200 dark:border-blueprint-700">
-                <Shield className="h-8 w-8 text-blueprint-600 dark:text-blueprint-400" />
+                <img src="/eye-magnifier.svg" alt="CCO Monitor" className="h-8 w-8" style={{ filter: "brightness(0) saturate(100%) invert(37%) sepia(93%) saturate(1250%) hue-rotate(199deg) brightness(95%) contrast(86%)" }} />
               </div>
               <div className="ml-4">
                 <h1 className="text-xl font-semibold text-slate-800 dark:text-white">

@@ -7,6 +7,7 @@ import { RuleModal } from "../components/config/RuleModal";
 import { useConfiguration } from "../hooks/useConfiguration";
 import { useConfigurationRules } from "../hooks/useConfigurationRules";
 import { useToast } from "../hooks/useToast";
+import { migrateRules } from "../utils/ruleMigration";
 import type { ApprovalRule } from "../types/config";
 
 export function Configuration() {
@@ -81,8 +82,8 @@ export function Configuration() {
     }
   };
 
-  const handleCreateRule = async (rule: ApprovalRule) => {
-    const result = await rulesApi.createRule(rule);
+  const handleCreateRule = async (rule: Omit<ApprovalRule, "id">) => {
+    const result = await rulesApi.createRule(rule as ApprovalRule);
     
     if (result.success) {
       showSuccess("Rule created successfully");
@@ -182,11 +183,10 @@ export function Configuration() {
 
           {/* Rules Management */}
           <RulesList
-            rules={config.approvals.rules}
+            rules={migrateRules(config.approvals.rules)}
             onCreateRule={handleCreateRule}
             onUpdateRule={handleUpdateRule}
             onDeleteRule={handleDeleteRule}
-            onTestRule={rulesApi.testRule}
             onRebalancePriorities={rulesApi.rebalancePriorities}
           />
         </div>
