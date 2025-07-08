@@ -27,7 +27,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
 
   const iconColors = {
     danger: "text-red-600",
-    warning: "text-yellow-600", 
+    warning: "text-yellow-600",
     info: "text-blue-600",
   };
 
@@ -43,7 +43,9 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-full bg-gray-100 dark:bg-gray-700 ${iconColors[variant]}`}>
+            <div
+              className={`p-2 rounded-full bg-gray-100 dark:bg-gray-700 ${iconColors[variant]}`}
+            >
               <AlertTriangle className="h-5 w-5" />
             </div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -60,24 +62,15 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
 
         {/* Content */}
         <div className="p-6">
-          <p className="text-gray-600 dark:text-gray-400">
-            {message}
-          </p>
+          <p className="text-gray-600 dark:text-gray-400">{message}</p>
         </div>
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-          >
+          <Button type="button" variant="outline" onClick={onClose}>
             {cancelText}
           </Button>
-          <Button
-            onClick={onConfirm}
-            className={confirmButtonColors[variant]}
-          >
+          <Button onClick={onConfirm} className={confirmButtonColors[variant]}>
             {confirmText}
           </Button>
         </div>

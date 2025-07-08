@@ -70,7 +70,7 @@
       }
     }
   },
-  
+
   "example2_agent_specific": {
     "description": "Auto-approve specific agents only",
     "config": {
@@ -116,7 +116,7 @@
       }
     }
   },
-  
+
   "example3_mcp_server_rules": {
     "description": "Rules for MCP server tools",
     "config": {
@@ -177,7 +177,7 @@
       }
     }
   },
-  
+
   "example4_mixed_tool_rules": {
     "description": "Mix of built-in and MCP tool rules",
     "config": {
@@ -255,7 +255,7 @@
       }
     }
   },
-  
+
   "example5_development_environment": {
     "description": "Permissive rules for development environment",
     "config": {

@@ -26,7 +26,9 @@ export const AgentFilter: React.FC<AgentFilterProps> = ({
         disabled
         title="Agent filtering temporarily disabled"
       >
-        <option key="ALL" value="ALL">All Agents</option>
+        <option key="ALL" value="ALL">
+          All Agents
+        </option>
         {agents.map((agent) => (
           <option key={agent} value={agent}>
             {agent}

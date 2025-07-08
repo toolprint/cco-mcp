@@ -40,7 +40,7 @@ export const ApprovalSettings: React.FC<ApprovalSettingsProps> = ({
 
   // Check if there are changes
   useEffect(() => {
-    const changed = 
+    const changed =
       pendingSettings.defaultAction !== defaultAction ||
       pendingSettings.timeout.duration !== timeout.duration ||
       pendingSettings.timeout.defaultAction !== timeout.defaultAction;
@@ -65,13 +65,13 @@ export const ApprovalSettings: React.FC<ApprovalSettingsProps> = ({
     const seconds = Math.floor(ms / 1000);
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
-    
+
     if (hours > 0) {
-      return `${hours} hour${hours > 1 ? 's' : ''}`;
+      return `${hours} hour${hours > 1 ? "s" : ""}`;
     } else if (minutes > 0) {
-      return `${minutes} minute${minutes > 1 ? 's' : ''}`;
+      return `${minutes} minute${minutes > 1 ? "s" : ""}`;
     } else {
-      return `${seconds} second${seconds > 1 ? 's' : ''}`;
+      return `${seconds} second${seconds > 1 ? "s" : ""}`;
     }
   };
 
@@ -93,16 +93,22 @@ export const ApprovalSettings: React.FC<ApprovalSettingsProps> = ({
               <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
                 Control whether tool calls require approval before execution
               </p>
-              
+
               {/* Show current configuration when collapsed */}
               {enabled && !isExpanded && (
                 <div className="mt-3 flex items-center gap-4 text-sm">
                   <span className="text-gray-600 dark:text-gray-400">
-                    Default action: <span className="font-medium text-gray-900 dark:text-white capitalize">{defaultAction}</span>
+                    Default action:{" "}
+                    <span className="font-medium text-gray-900 dark:text-white capitalize">
+                      {defaultAction}
+                    </span>
                   </span>
                   {defaultAction === "review" && (
                     <span className="text-gray-600 dark:text-gray-400">
-                      Timeout: <span className="font-medium text-gray-900 dark:text-white">{formatDuration(timeout.duration)}</span>
+                      Timeout:{" "}
+                      <span className="font-medium text-gray-900 dark:text-white">
+                        {formatDuration(timeout.duration)}
+                      </span>
                     </span>
                   )}
                   {hasChanges && (
@@ -113,14 +119,16 @@ export const ApprovalSettings: React.FC<ApprovalSettingsProps> = ({
                 </div>
               )}
             </div>
-            
+
             <div className="flex items-center gap-3">
               {/* Expand/Collapse button (only shown when enabled) */}
               {enabled && (
                 <button
                   onClick={() => setIsExpanded(!isExpanded)}
                   className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                  aria-label={isExpanded ? "Collapse settings" : "Expand settings"}
+                  aria-label={
+                    isExpanded ? "Collapse settings" : "Expand settings"
+                  }
                 >
                   {isExpanded ? (
                     <ChevronUp className="h-5 w-5" />
@@ -129,7 +137,7 @@ export const ApprovalSettings: React.FC<ApprovalSettingsProps> = ({
                   )}
                 </button>
               )}
-              
+
               {/* Enable/Disable toggle */}
               <button
                 onClick={() => onToggleEnabled(!enabled)}
@@ -158,7 +166,7 @@ export const ApprovalSettings: React.FC<ApprovalSettingsProps> = ({
                 <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
                   Action taken when no rules match a tool call
                 </p>
-                
+
                 <div className="space-y-2">
                   {(["review", "approve", "deny"] as const).map((action) => (
                     <label
@@ -173,7 +181,8 @@ export const ApprovalSettings: React.FC<ApprovalSettingsProps> = ({
                         onChange={(e) =>
                           handlePendingChange({
                             ...pendingSettings,
-                            defaultAction: e.target.value as typeof defaultAction,
+                            defaultAction: e.target
+                              .value as typeof defaultAction,
                           })
                         }
                         className="text-blueprint-600 focus:ring-blueprint-500"
@@ -201,7 +210,7 @@ export const ApprovalSettings: React.FC<ApprovalSettingsProps> = ({
                     </label>
                   ))}
                 </div>
-                
+
                 {/* Warning for non-review default actions */}
                 {pendingSettings.defaultAction !== "review" && (
                   <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mt-4">
@@ -212,9 +221,15 @@ export const ApprovalSettings: React.FC<ApprovalSettingsProps> = ({
                           Security Warning
                         </p>
                         <p className="text-xs text-amber-800 dark:text-amber-200 mt-1">
-                          Setting the default action to "{pendingSettings.defaultAction}" means all tool calls that don't match any rules 
-                          will be automatically {pendingSettings.defaultAction === "approve" ? "approved" : "denied"} without review. Consider adding specific rules or 
-                          changing the default action to "review" for better security.
+                          Setting the default action to "
+                          {pendingSettings.defaultAction}" means all tool calls
+                          that don't match any rules will be automatically{" "}
+                          {pendingSettings.defaultAction === "approve"
+                            ? "approved"
+                            : "denied"}{" "}
+                          without review. Consider adding specific rules or
+                          changing the default action to "review" for better
+                          security.
                         </p>
                       </div>
                     </div>
@@ -223,23 +238,28 @@ export const ApprovalSettings: React.FC<ApprovalSettingsProps> = ({
               </div>
 
               {/* Timeout Settings (always shown, disabled when not review) */}
-              <div className={cn(
-                "border-t border-gray-200 dark:border-gray-700 pt-6",
-                pendingSettings.defaultAction !== "review" && "opacity-50"
-              )}>
+              <div
+                className={cn(
+                  "border-t border-gray-200 dark:border-gray-700 pt-6",
+                  pendingSettings.defaultAction !== "review" && "opacity-50"
+                )}
+              >
                 <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                   <Clock className="h-4 w-4" />
                   Timeout Settings
                   {pendingSettings.defaultAction !== "review" && (
-                    <span className="text-xs text-gray-500 dark:text-gray-400">(Only applies when default action is "review")</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      (Only applies when default action is "review")
+                    </span>
                   )}
                 </h3>
                 <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
                   <div className="flex items-start gap-2">
                     <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5" />
                     <p className="text-xs text-blue-800 dark:text-blue-300">
-                      When a tool call requires review and no action is taken within the timeout period,
-                      the configured timeout action will be applied automatically.
+                      When a tool call requires review and no action is taken
+                      within the timeout period, the configured timeout action
+                      will be applied automatically.
                     </p>
                   </div>
                 </div>
@@ -250,14 +270,22 @@ export const ApprovalSettings: React.FC<ApprovalSettingsProps> = ({
                       Timeout Duration
                     </label>
                     <div className="flex items-center gap-3">
-                      <div className={cn(pendingSettings.defaultAction !== "review" && "pointer-events-none")}>
+                      <div
+                        className={cn(
+                          pendingSettings.defaultAction !== "review" &&
+                            "pointer-events-none"
+                        )}
+                      >
                         <DurationPicker
                           value={pendingSettings.timeout.duration}
                           onChange={(value) => {
                             if (pendingSettings.defaultAction === "review") {
                               handlePendingChange({
                                 ...pendingSettings,
-                                timeout: { ...pendingSettings.timeout, duration: value },
+                                timeout: {
+                                  ...pendingSettings.timeout,
+                                  duration: value,
+                                },
                               });
                             }
                           }}
@@ -280,7 +308,7 @@ export const ApprovalSettings: React.FC<ApprovalSettingsProps> = ({
                           key={action}
                           className={cn(
                             "flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors",
-                            pendingSettings.defaultAction === "review" 
+                            pendingSettings.defaultAction === "review"
                               ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50"
                               : "cursor-not-allowed"
                           )}
@@ -289,15 +317,21 @@ export const ApprovalSettings: React.FC<ApprovalSettingsProps> = ({
                             type="radio"
                             name="timeoutAction"
                             value={action}
-                            checked={pendingSettings.timeout.defaultAction === action}
-                            disabled={pendingSettings.defaultAction !== "review"}
+                            checked={
+                              pendingSettings.timeout.defaultAction === action
+                            }
+                            disabled={
+                              pendingSettings.defaultAction !== "review"
+                            }
                             onChange={(e) => {
                               if (pendingSettings.defaultAction === "review") {
                                 handlePendingChange({
                                   ...pendingSettings,
                                   timeout: {
                                     ...pendingSettings.timeout,
-                                    defaultAction: e.target.value as "approve" | "deny",
+                                    defaultAction: e.target.value as
+                                      | "approve"
+                                      | "deny",
                                   },
                                 });
                               }

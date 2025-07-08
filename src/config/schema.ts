@@ -3,28 +3,28 @@
  */
 
 import { z } from "zod";
-import type { 
-  CCOMCPConfig, 
-  ApprovalsConfig, 
-  ApprovalRule, 
-  MatchCriteria, 
+import type {
+  CCOMCPConfig,
+  ApprovalsConfig,
+  ApprovalRule,
+  MatchCriteria,
   ToolMatch,
   BuiltInToolMatch,
   MCPToolMatch,
   ApprovalAction,
-  TimeoutConfig 
+  TimeoutConfig,
 } from "./types.js";
 
 /**
  * Schema for approval actions
  */
-export const ApprovalActionSchema = z.enum(['approve', 'deny', 'review']);
+export const ApprovalActionSchema = z.enum(["approve", "deny", "review"]);
 
 /**
  * Schema for built-in tool match
  */
 export const BuiltInToolMatchSchema = z.object({
-  type: z.literal('builtin'),
+  type: z.literal("builtin"),
   toolName: z.string().min(1, "Tool name cannot be empty"),
   optionalSpecifier: z.string().optional(),
 }) satisfies z.ZodType<BuiltInToolMatch>;
@@ -33,7 +33,7 @@ export const BuiltInToolMatchSchema = z.object({
  * Schema for MCP tool match
  */
 export const MCPToolMatchSchema = z.object({
-  type: z.literal('mcp'),
+  type: z.literal("mcp"),
   serverName: z.string().min(1, "Server name cannot be empty"),
   toolName: z.string().optional(),
   optionalSpecifier: z.string().optional(),
@@ -42,7 +42,7 @@ export const MCPToolMatchSchema = z.object({
 /**
  * Schema for tool match (union of built-in and MCP)
  */
-export const ToolMatchSchema = z.discriminatedUnion('type', [
+export const ToolMatchSchema = z.discriminatedUnion("type", [
   BuiltInToolMatchSchema,
   MCPToolMatchSchema,
 ]) satisfies z.ZodType<ToolMatch>;
@@ -60,7 +60,13 @@ export const MatchCriteriaSchema = z.object({
  * Schema for approval rules
  */
 export const ApprovalRuleSchema = z.object({
-  id: z.string().min(1, "Rule ID cannot be empty").regex(/^[a-zA-Z0-9-_]+$/, "Rule ID must be alphanumeric with hyphens/underscores"),
+  id: z
+    .string()
+    .min(1, "Rule ID cannot be empty")
+    .regex(
+      /^[a-zA-Z0-9-_]+$/,
+      "Rule ID must be alphanumeric with hyphens/underscores"
+    ),
   name: z.string().min(1, "Rule name cannot be empty"),
   description: z.string().optional(),
   priority: z.number().int().min(0, "Priority must be non-negative"),
@@ -74,29 +80,35 @@ export const ApprovalRuleSchema = z.object({
  * Schema for timeout configuration
  */
 export const TimeoutConfigSchema = z.object({
-  duration: z.number().int().min(1000, "Timeout must be at least 1 second").max(3600000, "Timeout cannot exceed 1 hour"),
-  defaultAction: z.enum(['approve', 'deny']),
+  duration: z
+    .number()
+    .int()
+    .min(1000, "Timeout must be at least 1 second")
+    .max(3600000, "Timeout cannot exceed 1 hour"),
+  defaultAction: z.enum(["approve", "deny"]),
 }) satisfies z.ZodType<TimeoutConfig>;
 
 /**
  * Schema for approvals configuration
  */
-export const ApprovalsConfigSchema = z.object({
-  enabled: z.boolean(),
-  rules: z.array(ApprovalRuleSchema).default([]),
-  defaultAction: ApprovalActionSchema,
-  timeout: TimeoutConfigSchema,
-}).refine(
-  (data) => {
-    // Check for duplicate rule IDs
-    const ids = data.rules.map(r => r.id);
-    const uniqueIds = new Set(ids);
-    return ids.length === uniqueIds.size;
-  },
-  {
-    message: "Rule IDs must be unique",
-  }
-) satisfies z.ZodType<ApprovalsConfig>;
+export const ApprovalsConfigSchema = z
+  .object({
+    enabled: z.boolean(),
+    rules: z.array(ApprovalRuleSchema).default([]),
+    defaultAction: ApprovalActionSchema,
+    timeout: TimeoutConfigSchema,
+  })
+  .refine(
+    (data) => {
+      // Check for duplicate rule IDs
+      const ids = data.rules.map((r) => r.id);
+      const uniqueIds = new Set(ids);
+      return ids.length === uniqueIds.size;
+    },
+    {
+      message: "Rule IDs must be unique",
+    }
+  ) satisfies z.ZodType<ApprovalsConfig>;
 
 /**
  * Schema for root configuration
@@ -110,7 +122,7 @@ export const CCOMCPConfigSchema = z.object({
  */
 export const DEFAULT_TIMEOUT_CONFIG: TimeoutConfig = {
   duration: 300000, // 5 minutes
-  defaultAction: 'deny',
+  defaultAction: "deny",
 };
 
 /**
@@ -119,7 +131,7 @@ export const DEFAULT_TIMEOUT_CONFIG: TimeoutConfig = {
 export const DEFAULT_APPROVALS_CONFIG: ApprovalsConfig = {
   enabled: true,
   rules: [],
-  defaultAction: 'review',
+  defaultAction: "review",
   timeout: DEFAULT_TIMEOUT_CONFIG,
 };
 
@@ -133,20 +145,26 @@ export const DEFAULT_CONFIG: CCOMCPConfig = {
 /**
  * Validate a configuration object
  */
-export function validateConfig(config: unknown): z.SafeParseReturnType<CCOMCPConfig, CCOMCPConfig> {
+export function validateConfig(
+  config: unknown
+): z.SafeParseReturnType<CCOMCPConfig, CCOMCPConfig> {
   return CCOMCPConfigSchema.safeParse(config);
 }
 
 /**
  * Validate a partial configuration for updates
  */
-export function validatePartialConfig(config: unknown): z.SafeParseReturnType<Partial<CCOMCPConfig>, Partial<CCOMCPConfig>> {
+export function validatePartialConfig(
+  config: unknown
+): z.SafeParseReturnType<Partial<CCOMCPConfig>, Partial<CCOMCPConfig>> {
   return CCOMCPConfigSchema.partial().safeParse(config);
 }
 
 /**
  * Validate an approval rule
  */
-export function validateApprovalRule(rule: unknown): z.SafeParseReturnType<ApprovalRule, ApprovalRule> {
+export function validateApprovalRule(
+  rule: unknown
+): z.SafeParseReturnType<ApprovalRule, ApprovalRule> {
   return ApprovalRuleSchema.safeParse(rule);
 }

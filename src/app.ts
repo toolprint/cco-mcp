@@ -18,22 +18,23 @@ app.use(express.static(uiPath));
 
 // Health check endpoint for Cloud Run
 app.get("/health", async (_, res) => {
-  const { getConfigurationService } = await import("./services/ConfigurationService.js");
+  const { getConfigurationService } = await import(
+    "./services/ConfigurationService.js"
+  );
   const configService = getConfigurationService();
   const config = configService.getConfig();
-  
-  res
-    .status(200)
-    .json({ 
-      status: "healthy", 
-      timestamp: new Date().toISOString(),
-      autoApproval: {
-        enabled: configService.isAutoApprovalEnabled(),
-        ruleCount: config.approvals.rules.length,
-        activeRuleCount: config.approvals.rules.filter(r => r.enabled !== false).length,
-        defaultAction: config.approvals.defaultAction,
-      },
-    });
+
+  res.status(200).json({
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+    autoApproval: {
+      enabled: configService.isAutoApprovalEnabled(),
+      ruleCount: config.approvals.rules.length,
+      activeRuleCount: config.approvals.rules.filter((r) => r.enabled !== false)
+        .length,
+      defaultAction: config.approvals.defaultAction,
+    },
+  });
 });
 
 // Mount SSE routes first (must come before audit routes due to /audit-log/stream vs /audit-log/:id conflict)
@@ -108,10 +109,10 @@ app.delete("/mcp", async (req: Request, res: Response) => {
 // Catch-all middleware for SPA - must be last
 app.use((req, res) => {
   // Only handle GET requests
-  if (req.method !== 'GET') {
+  if (req.method !== "GET") {
     return res.status(404).json({ error: "Not found" });
   }
-  
+
   // Don't serve index.html for API routes or assets with extensions
   if (req.path.startsWith("/api") || req.path.match(/\.\w+$/)) {
     res.status(404).json({ error: "Not found" });

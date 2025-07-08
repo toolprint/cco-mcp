@@ -13,18 +13,18 @@ export const ToolRulePreview: React.FC<ToolRulePreviewProps> = ({
   className,
 }) => {
   const formatRule = (tool: ToolMatch): string => {
-    if (tool.type === 'builtin') {
+    if (tool.type === "builtin") {
       const specifier = tool.optionalSpecifier || "";
       return specifier ? `${tool.toolName}(${specifier})` : tool.toolName;
     } else {
       // MCP tool
       const base = `mcp__${tool.serverName}`;
-      
+
       if (!tool.toolName) {
         // Match all tools on the server - no trailing __*
         return base;
       }
-      
+
       const specifier = tool.optionalSpecifier || "*";
       return `${base}__${tool.toolName}(${specifier})`;
     }

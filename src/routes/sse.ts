@@ -36,16 +36,18 @@ export function createSSERoutes(): Router {
     // Send initial connection message with configuration status
     const configService = getConfigurationService();
     const config = configService.getConfig();
-    
+
     res.write("event: connected\n");
     res.write(
-      `data: ${JSON.stringify({ 
+      `data: ${JSON.stringify({
         message: "Connected to audit log stream",
         autoApproval: {
           enabled: configService.isAutoApprovalEnabled(),
           ruleCount: config.approvals.rules.length,
-          activeRuleCount: config.approvals.rules.filter(r => r.enabled !== false).length,
-        }
+          activeRuleCount: config.approvals.rules.filter(
+            (r) => r.enabled !== false
+          ).length,
+        },
       })}\n\n`
     );
 
@@ -109,8 +111,10 @@ export function createSSERoutes(): Router {
           autoApproval: {
             enabled: configService.isAutoApprovalEnabled(),
             ruleCount: updatedConfig.approvals.rules.length,
-            activeRuleCount: updatedConfig.approvals.rules.filter(r => r.enabled !== false).length,
-          }
+            activeRuleCount: updatedConfig.approvals.rules.filter(
+              (r) => r.enabled !== false
+            ).length,
+          },
         })}\n\n`
       );
     };

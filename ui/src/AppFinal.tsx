@@ -36,7 +36,9 @@ function AppFinal() {
   const [showFilters, setShowFilters] = useState(false);
   const [showStats, setShowStats] = useState(true);
   const [showCreateRuleModal, setShowCreateRuleModal] = useState(false);
-  const [selectedEntry, setSelectedEntry] = useState<AuditLogEntry | null>(null);
+  const [selectedEntry, setSelectedEntry] = useState<AuditLogEntry | null>(
+    null
+  );
 
   const navigate = useNavigate();
   const { toasts, removeToast, info, success, error: showError } = useToast();
@@ -130,17 +132,20 @@ function AppFinal() {
     setShowCreateRuleModal(true);
   }, []);
 
-  const handleSaveRule = useCallback(async (rule: ApprovalRule) => {
-    const result = await rulesApi.createRule(rule);
-    
-    if (result.success) {
-      success("Rule created successfully");
-      setShowCreateRuleModal(false);
-      setSelectedEntry(null);
-    } else {
-      showError(result.error || "Failed to create rule");
-    }
-  }, [rulesApi, success, showError]);
+  const handleSaveRule = useCallback(
+    async (rule: ApprovalRule) => {
+      const result = await rulesApi.createRule(rule);
+
+      if (result.success) {
+        success("Rule created successfully");
+        setShowCreateRuleModal(false);
+        setSelectedEntry(null);
+      } else {
+        showError(result.error || "Failed to create rule");
+      }
+    },
+    [rulesApi, success, showError]
+  );
 
   useEffect(() => {
     // Check API health
@@ -321,11 +326,14 @@ function AppFinal() {
             setSelectedEntry(null);
           }}
           onSave={handleSaveRule}
-          existingPriorities={config.approvals.rules.map(r => r.priority)}
+          existingPriorities={config.approvals.rules.map((r) => r.priority)}
           prePopulatedData={{
             toolName: selectedEntry.tool_name,
             agentIdentity: selectedEntry.agent_identity,
-            action: selectedEntry.state === "APPROVED" ? "approve" : "deny" as const,
+            action:
+              selectedEntry.state === "APPROVED"
+                ? "approve"
+                : ("deny" as const),
           }}
         />
       )}

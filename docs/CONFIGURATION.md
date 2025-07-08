@@ -7,6 +7,7 @@ CCO-MCP now supports a flexible configuration system that allows you to define r
 ## Configuration File Location
 
 The configuration file is stored at:
+
 - **Default**: `~/.cco-mcp/config.json`
 - **Custom**: Set `CCO_CONFIG_PATH` environment variable
 
@@ -73,6 +74,7 @@ Each rule has the following structure:
 Two types of tool matching are supported:
 
 1. **Built-in Tools**: Standard tools provided by the MCP server
+
    ```json
    {
      "tool": {
@@ -88,7 +90,7 @@ Two types of tool matching are supported:
      "tool": {
        "type": "mcp",
        "serverName": "sentry",
-       "toolName": "find_issues"  // Optional - omit to match all tools from server
+       "toolName": "find_issues" // Optional - omit to match all tools from server
      }
    }
    ```

@@ -4,7 +4,14 @@ import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Toggle } from "../ui/toggle";
 import { ConfirmationModal } from "../ui/confirmation-modal";
-import { Plus, Edit2, Trash2, GripVertical, RotateCcw, Code } from "lucide-react";
+import {
+  Plus,
+  Edit2,
+  Trash2,
+  GripVertical,
+  RotateCcw,
+  Code,
+} from "lucide-react";
 import { RuleModal } from "./RuleModal";
 import { priorityUtils } from "../../utils/priority";
 import { cn } from "../../lib/utils";
@@ -15,7 +22,9 @@ interface RulesListProps {
   onCreateRule: (rule: Omit<ApprovalRule, "id">) => void;
   onUpdateRule: (id: string, rule: Partial<ApprovalRule>) => void;
   onDeleteRule: (id: string) => void;
-  onRebalancePriorities?: (rules: ApprovalRule[]) => Promise<{ success: boolean; error?: string }>;
+  onRebalancePriorities?: (
+    rules: ApprovalRule[]
+  ) => Promise<{ success: boolean; error?: string }>;
 }
 
 export const RulesList: React.FC<RulesListProps> = ({
@@ -30,12 +39,14 @@ export const RulesList: React.FC<RulesListProps> = ({
   const [selectedRules, setSelectedRules] = useState<Set<string>>(new Set());
   const [draggedRule, setDraggedRule] = useState<string | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  const [dropPosition, setDropPosition] = useState<'before' | 'after' | null>(null);
+  const [dropPosition, setDropPosition] = useState<"before" | "after" | null>(
+    null
+  );
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [rulesToDelete, setRulesToDelete] = useState<Set<string>>(new Set());
 
   const sortedRules = [...rules].sort((a, b) => a.priority - b.priority);
-  const priorities = rules.map(rule => rule.priority);
+  const priorities = rules.map((rule) => rule.priority);
   const needsRebalancing = priorityUtils.needsRebalancing(priorities);
 
   const handleCreateRule = () => {
@@ -45,7 +56,7 @@ export const RulesList: React.FC<RulesListProps> = ({
 
   const handleRebalancePriorities = async () => {
     if (!onRebalancePriorities) return;
-    
+
     const result = await onRebalancePriorities(rules);
     if (!result.success) {
       console.error("Failed to rebalance priorities:", result.error);
@@ -66,7 +77,6 @@ export const RulesList: React.FC<RulesListProps> = ({
     setIsModalOpen(false);
   };
 
-
   const handleSelectRule = (ruleId: string, selected: boolean) => {
     const newSelected = new Set(selectedRules);
     if (selected) {
@@ -79,7 +89,7 @@ export const RulesList: React.FC<RulesListProps> = ({
 
   const handleSelectAll = (selected: boolean) => {
     if (selected) {
-      setSelectedRules(new Set(sortedRules.map(rule => rule.id)));
+      setSelectedRules(new Set(sortedRules.map((rule) => rule.id)));
     } else {
       setSelectedRules(new Set());
     }
@@ -88,13 +98,13 @@ export const RulesList: React.FC<RulesListProps> = ({
   const handleDeleteSelected = () => {
     const count = selectedRules.size;
     if (count === 0) return;
-    
+
     setRulesToDelete(selectedRules);
     setShowDeleteConfirmation(true);
   };
 
   const confirmDelete = () => {
-    rulesToDelete.forEach(ruleId => onDeleteRule(ruleId));
+    rulesToDelete.forEach((ruleId) => onDeleteRule(ruleId));
     setSelectedRules(new Set());
     setRulesToDelete(new Set());
     setShowDeleteConfirmation(false);
@@ -107,20 +117,20 @@ export const RulesList: React.FC<RulesListProps> = ({
 
   const handleDragStart = (e: React.DragEvent, ruleId: string) => {
     setDraggedRule(ruleId);
-    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.effectAllowed = "move";
   };
 
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    
+    e.dataTransfer.dropEffect = "move";
+
     // Calculate drop position based on cursor position within the card
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const mouseY = e.clientY;
     const cardMiddle = rect.top + rect.height / 2;
-    
-    const position = mouseY < cardMiddle ? 'before' : 'after';
-    
+
+    const position = mouseY < cardMiddle ? "before" : "after";
+
     setDragOverIndex(index);
     setDropPosition(position);
   };
@@ -130,8 +140,13 @@ export const RulesList: React.FC<RulesListProps> = ({
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const mouseX = e.clientX;
     const mouseY = e.clientY;
-    
-    if (mouseX < rect.left || mouseX > rect.right || mouseY < rect.top || mouseY > rect.bottom) {
+
+    if (
+      mouseX < rect.left ||
+      mouseX > rect.right ||
+      mouseY < rect.top ||
+      mouseY > rect.bottom
+    ) {
       setDragOverIndex(null);
       setDropPosition(null);
     }
@@ -139,10 +154,12 @@ export const RulesList: React.FC<RulesListProps> = ({
 
   const handleDrop = (e: React.DragEvent, targetIndex: number) => {
     e.preventDefault();
-    
+
     if (!draggedRule || !dropPosition) return;
-    
-    const draggedIndex = sortedRules.findIndex(rule => rule.id === draggedRule);
+
+    const draggedIndex = sortedRules.findIndex(
+      (rule) => rule.id === draggedRule
+    );
     if (draggedIndex === -1) {
       setDraggedRule(null);
       setDragOverIndex(null);
@@ -152,10 +169,10 @@ export const RulesList: React.FC<RulesListProps> = ({
 
     // Calculate actual insert position based on drop position
     let insertIndex = targetIndex;
-    if (dropPosition === 'after') {
+    if (dropPosition === "after") {
       insertIndex = targetIndex + 1;
     }
-    
+
     // Adjust for the fact that we're removing the dragged item first
     if (draggedIndex < insertIndex) {
       insertIndex = insertIndex - 1;
@@ -218,25 +235,25 @@ export const RulesList: React.FC<RulesListProps> = ({
   };
 
   const formatToolMatch = (tool: ToolMatch): string => {
-    if (tool.type === 'builtin') {
+    if (tool.type === "builtin") {
       const specifier = tool.optionalSpecifier || "";
       return specifier ? `${tool.toolName}(${specifier})` : tool.toolName;
     } else {
       // MCP tool
       const base = `mcp__${tool.serverName}`;
-      
+
       if (!tool.toolName) {
         // Match all tools on the server - no trailing __*
         return base;
       }
-      
+
       const specifier = tool.optionalSpecifier || "*";
       return `${base}__${tool.toolName}(${specifier})`;
     }
   };
 
   const getToolTypeLabel = (tool: ToolMatch): string => {
-    return tool.type === 'builtin' ? 'Built-in' : 'MCP';
+    return tool.type === "builtin" ? "Built-in" : "MCP";
   };
 
   return (
@@ -304,25 +321,29 @@ export const RulesList: React.FC<RulesListProps> = ({
               <div className="flex items-center gap-2 pb-2 border-b border-gray-200 dark:border-gray-700">
                 <input
                   type="checkbox"
-                  checked={selectedRules.size === sortedRules.length && sortedRules.length > 0}
+                  checked={
+                    selectedRules.size === sortedRules.length &&
+                    sortedRules.length > 0
+                  }
                   onChange={(e) => handleSelectAll(e.target.checked)}
                   className="rounded border-gray-300 text-blueprint-600 focus:ring-blueprint-500"
                 />
                 <label className="text-sm text-gray-600 dark:text-gray-400">
-                  Select all ({sortedRules.length} rule{sortedRules.length !== 1 ? 's' : ''})
+                  Select all ({sortedRules.length} rule
+                  {sortedRules.length !== 1 ? "s" : ""})
                 </label>
               </div>
-              
+
               {sortedRules.map((rule, index) => (
                 <div key={rule.id} className="relative">
                   {/* Drop indicator line before this card */}
-                  {dragOverIndex === index && dropPosition === 'before' && (
+                  {dragOverIndex === index && dropPosition === "before" && (
                     <div className="absolute -top-2 left-0 right-0 z-10">
                       <div className="h-1 bg-blueprint-500 rounded-full shadow-lg" />
                       <div className="absolute left-0 top-0 -translate-y-1 w-3 h-3 bg-blueprint-500 rounded-full" />
                     </div>
                   )}
-                  
+
                   <div
                     draggable
                     onDragStart={(e) => handleDragStart(e, rule.id)}
@@ -338,101 +359,114 @@ export const RulesList: React.FC<RulesListProps> = ({
                       draggedRule === rule.id && "opacity-50"
                     )}
                   >
-                  {/* Top Row: Checkbox + Drag Handle + Title/Badges + Priority + Toggle */}
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      {/* Selection Checkbox */}
-                      <input
-                        type="checkbox"
-                        checked={selectedRules.has(rule.id)}
-                        onChange={(e) => handleSelectRule(rule.id, e.target.checked)}
-                        className="rounded border-gray-300 text-blueprint-600 focus:ring-blueprint-500"
-                      />
-                      {/* Drag Handle */}
-                      <div className="cursor-move text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                        <GripVertical className="h-5 w-5" />
+                    {/* Top Row: Checkbox + Drag Handle + Title/Badges + Priority + Toggle */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        {/* Selection Checkbox */}
+                        <input
+                          type="checkbox"
+                          checked={selectedRules.has(rule.id)}
+                          onChange={(e) =>
+                            handleSelectRule(rule.id, e.target.checked)
+                          }
+                          className="rounded border-gray-300 text-blueprint-600 focus:ring-blueprint-500"
+                        />
+                        {/* Drag Handle */}
+                        <div className="cursor-move text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                          <GripVertical className="h-5 w-5" />
+                        </div>
+                        {/* Rule Title and Badges */}
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-medium text-gray-900 dark:text-white">
+                              {rule.name}
+                            </h3>
+                            <Badge
+                              variant={getActionBadgeVariant(rule.action)}
+                              className="text-xs"
+                            >
+                              {rule.action}
+                            </Badge>
+                          </div>
+                        </div>
                       </div>
-                      {/* Rule Title and Badges */}
-                      <div>
+
+                      {/* Priority + Toggle */}
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          Priority: {rule.priority}
+                        </span>
                         <div className="flex items-center gap-2">
-                          <h3 className="font-medium text-gray-900 dark:text-white">
-                            {rule.name}
-                          </h3>
-                          <Badge
-                            variant={getActionBadgeVariant(rule.action)}
-                            className="text-xs"
-                          >
-                            {rule.action}
-                          </Badge>
+                          <Toggle
+                            checked={rule.enabled !== false}
+                            onChange={(enabled) =>
+                              onUpdateRule(rule.id, { enabled })
+                            }
+                          />
+                          <span className="text-xs text-gray-600 dark:text-gray-400">
+                            {rule.enabled !== false ? "Enabled" : "Disabled"}
+                          </span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Priority + Toggle */}
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        Priority: {rule.priority}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <Toggle
-                          checked={rule.enabled !== false}
-                          onChange={(enabled) => onUpdateRule(rule.id, { enabled })}
-                        />
-                        <span className="text-xs text-gray-600 dark:text-gray-400">
-                          {rule.enabled !== false ? "Enabled" : "Disabled"}
-                        </span>
-                      </div>
+                    {/* Description */}
+                    {rule.description && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 ml-11">
+                        {rule.description}
+                      </p>
+                    )}
+
+                    {/* Match Criteria Summary */}
+                    <div className="mb-3 ml-11 flex flex-wrap gap-2">
+                      {rule.match.tool && (
+                        <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs">
+                          <Code className="h-3 w-3" />
+                          <span className="font-mono">
+                            {formatToolMatch(rule.match.tool)}
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className="ml-1 text-[10px] px-1 py-0"
+                          >
+                            {getToolTypeLabel(rule.match.tool)}
+                          </Badge>
+                        </div>
+                      )}
+                      {rule.match.agentIdentity && (
+                        <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-xs opacity-50">
+                          <span className="font-medium">Agent:</span>
+                          <span>{rule.match.agentIdentity}</span>
+                          <span className="text-green-600 dark:text-green-400">
+                            (Coming Soon)
+                          </span>
+                        </div>
+                      )}
+                      {rule.match.inputParameters && (
+                        <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 text-xs opacity-50">
+                          <span className="font-medium">Input Params</span>
+                          <span className="text-purple-600 dark:text-purple-400">
+                            (Coming Soon)
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Bottom Right Actions */}
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleEditRule(rule)}
+                        className="gap-1 bg-blueprint-500 hover:bg-blueprint-600 text-white"
+                      >
+                        <Edit2 className="h-3 w-3" />
+                        Edit
+                      </Button>
                     </div>
                   </div>
 
-                  {/* Description */}
-                  {rule.description && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 ml-11">
-                      {rule.description}
-                    </p>
-                  )}
-
-                  {/* Match Criteria Summary */}
-                  <div className="mb-3 ml-11 flex flex-wrap gap-2">
-                    {rule.match.tool && (
-                      <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs">
-                        <Code className="h-3 w-3" />
-                        <span className="font-mono">{formatToolMatch(rule.match.tool)}</span>
-                        <Badge variant="outline" className="ml-1 text-[10px] px-1 py-0">
-                          {getToolTypeLabel(rule.match.tool)}
-                        </Badge>
-                      </div>
-                    )}
-                    {rule.match.agentIdentity && (
-                      <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-xs opacity-50">
-                        <span className="font-medium">Agent:</span>
-                        <span>{rule.match.agentIdentity}</span>
-                        <span className="text-green-600 dark:text-green-400">(Coming Soon)</span>
-                      </div>
-                    )}
-                    {rule.match.inputParameters && (
-                      <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 text-xs opacity-50">
-                        <span className="font-medium">Input Params</span>
-                        <span className="text-purple-600 dark:text-purple-400">(Coming Soon)</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Bottom Right Actions */}
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => handleEditRule(rule)}
-                      className="gap-1 bg-blueprint-500 hover:bg-blueprint-600 text-white"
-                    >
-                      <Edit2 className="h-3 w-3" />
-                      Edit
-                    </Button>
-                  </div>
-                  </div>
-                  
                   {/* Drop indicator line after this card */}
-                  {dragOverIndex === index && dropPosition === 'after' && (
+                  {dragOverIndex === index && dropPosition === "after" && (
                     <div className="absolute -bottom-2 left-0 right-0 z-10">
                       <div className="h-1 bg-blueprint-500 rounded-full shadow-lg" />
                       <div className="absolute right-0 top-0 -translate-y-1 w-3 h-3 bg-blueprint-500 rounded-full" />
@@ -440,14 +474,16 @@ export const RulesList: React.FC<RulesListProps> = ({
                   )}
                 </div>
               ))}
-              
+
               {/* Drop indicator for bottom of list */}
-              {draggedRule && dragOverIndex === sortedRules.length - 1 && dropPosition === 'after' && (
-                <div className="relative">
-                  <div className="h-1 bg-blueprint-500 rounded-full shadow-lg" />
-                  <div className="absolute right-0 top-0 -translate-y-1 w-3 h-3 bg-blueprint-500 rounded-full" />
-                </div>
-              )}
+              {draggedRule &&
+                dragOverIndex === sortedRules.length - 1 &&
+                dropPosition === "after" && (
+                  <div className="relative">
+                    <div className="h-1 bg-blueprint-500 rounded-full shadow-lg" />
+                    <div className="absolute right-0 top-0 -translate-y-1 w-3 h-3 bg-blueprint-500 rounded-full" />
+                  </div>
+                )}
             </div>
           )}
         </CardContent>
@@ -459,7 +495,7 @@ export const RulesList: React.FC<RulesListProps> = ({
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveRule}
         rule={editingRule}
-        existingPriorities={rules.map(r => r.priority)}
+        existingPriorities={rules.map((r) => r.priority)}
       />
 
       {/* Delete Confirmation Modal */}
@@ -468,7 +504,7 @@ export const RulesList: React.FC<RulesListProps> = ({
         onClose={cancelDelete}
         onConfirm={confirmDelete}
         title="Delete Rules"
-        message={`Are you sure you want to delete ${rulesToDelete.size} rule${rulesToDelete.size > 1 ? 's' : ''}? This action cannot be undone.`}
+        message={`Are you sure you want to delete ${rulesToDelete.size} rule${rulesToDelete.size > 1 ? "s" : ""}? This action cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"
         variant="danger"

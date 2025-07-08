@@ -30,8 +30,11 @@ export const MCPToolForm: React.FC<MCPToolFormProps> = ({
         <Shield className="h-4 w-4 text-blueprint-600 dark:text-blueprint-400 mt-0.5 flex-shrink-0" />
         <div className="text-xs text-blueprint-800 dark:text-blueprint-200">
           <p className="font-medium mb-1">Important Security Notice:</p>
-          <p>MCP rules apply to the configured server names in your MCP settings. Ensure your MCP servers 
-          are properly named to prevent privilege escalation.</p>
+          <p>
+            MCP rules apply to the configured server names in your MCP settings.
+            Ensure your MCP servers are properly named to prevent privilege
+            escalation.
+          </p>
         </div>
       </div>
 
@@ -52,7 +55,8 @@ export const MCPToolForm: React.FC<MCPToolFormProps> = ({
         />
         {showServerWarning && (
           <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-            Server names must be lowercase and contain only letters, numbers, hyphens, and underscores.
+            Server names must be lowercase and contain only letters, numbers,
+            hyphens, and underscores.
           </p>
         )}
         <p className="text-xs text-gray-600 dark:text-gray-400">
@@ -64,7 +68,9 @@ export const MCPToolForm: React.FC<MCPToolFormProps> = ({
       <div className="space-y-2">
         <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
           Tool Name
-          <span className="text-xs text-gray-500 ml-2">(Leave empty to match all tools on this server)</span>
+          <span className="text-xs text-gray-500 ml-2">
+            (Leave empty to match all tools on this server)
+          </span>
         </label>
         <Input
           type="text"
@@ -77,7 +83,8 @@ export const MCPToolForm: React.FC<MCPToolFormProps> = ({
           <div className="flex items-start gap-2 mt-2">
             <Info className="h-4 w-4 text-blueprint-500 mt-0.5 flex-shrink-0" />
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              Leaving this empty will match <strong>all tools</strong> on the <code>{serverName || "server"}</code> server.
+              Leaving this empty will match <strong>all tools</strong> on the{" "}
+              <code>{serverName || "server"}</code> server.
             </p>
           </div>
         )}
@@ -100,8 +107,9 @@ export const MCPToolForm: React.FC<MCPToolFormProps> = ({
           <div className="flex items-start gap-2 mt-2 p-3 bg-orange-50 dark:bg-orange-950/20 rounded-md border border-orange-200 dark:border-orange-800">
             <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400 mt-0.5 flex-shrink-0" />
             <p className="text-xs text-orange-800 dark:text-orange-200">
-              <span className="font-medium">Security Notice:</span> Using <code className="font-mono">*</code> allows 
-              unrestricted content for this tool. Consider being more specific if possible.
+              <span className="font-medium">Security Notice:</span> Using{" "}
+              <code className="font-mono">*</code> allows unrestricted content
+              for this tool. Consider being more specific if possible.
             </p>
           </div>
         )}
@@ -109,17 +117,31 @@ export const MCPToolForm: React.FC<MCPToolFormProps> = ({
 
       {/* Examples */}
       <div className="space-y-2 bg-gray-50 dark:bg-gray-900/50 p-3 rounded-md">
-        <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Rule Format Examples:</p>
+        <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
+          Rule Format Examples:
+        </p>
         <ul className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-          <li>• <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">
-            mcp__puppeteer__navigate(*)
-          </code> - Allow navigation to any URL</li>
-          <li>• <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">
-            mcp__github__create_issue(*)
-          </code> - Allow creating issues in any repo</li>
-          <li>• <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">
-            mcp__database
-          </code> - Allow all database operations</li>
+          <li>
+            •{" "}
+            <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">
+              mcp__puppeteer__navigate(*)
+            </code>{" "}
+            - Allow navigation to any URL
+          </li>
+          <li>
+            •{" "}
+            <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">
+              mcp__github__create_issue(*)
+            </code>{" "}
+            - Allow creating issues in any repo
+          </li>
+          <li>
+            •{" "}
+            <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">
+              mcp__database
+            </code>{" "}
+            - Allow all database operations
+          </li>
         </ul>
       </div>
     </div>

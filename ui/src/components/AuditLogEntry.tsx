@@ -324,7 +324,6 @@ export const AuditLogEntry: React.FC<AuditLogEntryProps> = ({
               </div>
             </div>
           )}
-
       </CardContent>
     </Card>
   );

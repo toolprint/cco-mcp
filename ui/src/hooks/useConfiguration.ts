@@ -10,17 +10,19 @@ export function useConfiguration() {
   const fetchConfig = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await fetch("/api/config");
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
       setConfig(data.config);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch configuration");
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch configuration"
+      );
     } finally {
       setLoading(false);
     }
@@ -29,7 +31,7 @@ export function useConfiguration() {
   const updateConfig = useCallback(async (newConfig: CCOMCPConfig) => {
     setSaving(true);
     setError(null);
-    
+
     try {
       const response = await fetch("/api/config", {
         method: "PUT",
@@ -41,14 +43,17 @@ export function useConfiguration() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        throw new Error(
+          errorData.error || `HTTP error! status: ${response.status}`
+        );
       }
 
       const data = await response.json();
       setConfig(data.config);
       return { success: true };
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to update configuration";
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to update configuration";
       setError(errorMessage);
       return { success: false, error: errorMessage };
     } finally {
@@ -56,35 +61,41 @@ export function useConfiguration() {
     }
   }, []);
 
-  const patchConfig = useCallback(async (partialConfig: Partial<CCOMCPConfig>) => {
-    setSaving(true);
-    setError(null);
-    
-    try {
-      const response = await fetch("/api/config", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(partialConfig),
-      });
+  const patchConfig = useCallback(
+    async (partialConfig: Partial<CCOMCPConfig>) => {
+      setSaving(true);
+      setError(null);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      try {
+        const response = await fetch("/api/config", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(partialConfig),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(
+            errorData.error || `HTTP error! status: ${response.status}`
+          );
+        }
+
+        const data = await response.json();
+        setConfig(data.config);
+        return { success: true };
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to update configuration";
+        setError(errorMessage);
+        return { success: false, error: errorMessage };
+      } finally {
+        setSaving(false);
       }
-
-      const data = await response.json();
-      setConfig(data.config);
-      return { success: true };
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to update configuration";
-      setError(errorMessage);
-      return { success: false, error: errorMessage };
-    } finally {
-      setSaving(false);
-    }
-  }, []);
+    },
+    []
+  );
 
   const validateConfig = useCallback(async (configToValidate: CCOMCPConfig) => {
     try {

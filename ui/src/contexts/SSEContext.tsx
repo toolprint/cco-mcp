@@ -1,5 +1,5 @@
-import React, { createContext, useContext, type ReactNode } from 'react';
-import { useSSE } from '../hooks/useSSE';
+import React, { createContext, useContext, type ReactNode } from "react";
+import { useSSE } from "../hooks/useSSE";
 
 interface SSEContextType {
   isConnected: boolean;
@@ -28,7 +28,7 @@ export const SSEProvider: React.FC<SSEProviderProps> = ({ children }) => {
 export const useSSEConnection = (): SSEContextType => {
   const context = useContext(SSEContext);
   if (context === undefined) {
-    throw new Error('useSSEConnection must be used within an SSEProvider');
+    throw new Error("useSSEConnection must be used within an SSEProvider");
   }
   return context;
 };

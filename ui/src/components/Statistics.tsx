@@ -173,7 +173,9 @@ export const Statistics: React.FC<StatisticsProps> = ({ entries }) => {
             <div
               className="h-full bg-gradient-to-r from-blueprint-400 to-blueprint-600 rounded-full transition-all duration-500"
               style={{
-                width: stats.topTool ? `${Math.min((stats.topTool.count / entries.length) * 100, 100)}%` : "0%",
+                width: stats.topTool
+                  ? `${Math.min((stats.topTool.count / entries.length) * 100, 100)}%`
+                  : "0%",
               }}
             />
           </div>

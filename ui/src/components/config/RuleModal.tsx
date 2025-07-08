@@ -6,11 +6,11 @@ import { BuiltInToolForm } from "./BuiltInToolForm";
 import { MCPToolForm } from "./MCPToolForm";
 import { ToolRulePreview } from "./ToolRulePreview";
 import { priorityUtils } from "../../utils/priority";
-import type { 
-  ApprovalRule, 
-  ApprovalAction, 
+import type {
+  ApprovalRule,
+  ApprovalAction,
   ToolType,
-  ToolMatch
+  ToolMatch,
 } from "../../types/config";
 import type { BuiltInToolName } from "../../types/config";
 
@@ -70,11 +70,12 @@ export const RuleModal: React.FC<RuleModalProps> = ({
         action: rule.action,
         enabled: rule.enabled !== false,
         toolType: tool.type,
-        builtInToolName: tool.type === 'builtin' ? tool.toolName : "",
-        builtInSpecifier: tool.type === 'builtin' ? tool.optionalSpecifier || "" : "",
-        mcpServerName: tool.type === 'mcp' ? tool.serverName : "",
-        mcpToolName: tool.type === 'mcp' ? tool.toolName || "" : "",
-        mcpSpecifier: tool.type === 'mcp' ? tool.optionalSpecifier || "*" : "*",
+        builtInToolName: tool.type === "builtin" ? tool.toolName : "",
+        builtInSpecifier:
+          tool.type === "builtin" ? tool.optionalSpecifier || "" : "",
+        mcpServerName: tool.type === "mcp" ? tool.serverName : "",
+        mcpToolName: tool.type === "mcp" ? tool.toolName || "" : "",
+        mcpSpecifier: tool.type === "mcp" ? tool.optionalSpecifier || "*" : "*",
         agentIdentity: rule.match.agentIdentity || "",
         timeoutOverride: {
           enabled: !!rule.timeoutOverride,
@@ -85,11 +86,11 @@ export const RuleModal: React.FC<RuleModalProps> = ({
       // Parse pre-populated tool name to determine type
       const toolName = prePopulatedData.toolName || "";
       const isMCP = toolName.startsWith("mcp__");
-      
+
       if (isMCP) {
         // Parse MCP tool format: mcp__server__tool
         const parts = toolName.split("__");
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
           toolType: "mcp",
           mcpServerName: parts[1] || "",
@@ -98,7 +99,7 @@ export const RuleModal: React.FC<RuleModalProps> = ({
           action: prePopulatedData.action || "review",
         }));
       } else {
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
           toolType: "builtin",
           builtInToolName: toolName,
@@ -106,14 +107,15 @@ export const RuleModal: React.FC<RuleModalProps> = ({
           action: prePopulatedData.action || "review",
         }));
       }
-      
+
       // Set smart defaults for name and description
-      const nextPriority = priorityUtils.calculateNextPriority(existingPriorities);
+      const nextPriority =
+        priorityUtils.calculateNextPriority(existingPriorities);
       const action = prePopulatedData.action || "review";
-      
+
       let ruleName = "";
       let ruleDescription = "";
-      
+
       if (action === "approve") {
         ruleName = `Auto-approve ${toolName}`;
         ruleDescription = `Automatically approve requests for the ${toolName} tool.`;
@@ -124,8 +126,8 @@ export const RuleModal: React.FC<RuleModalProps> = ({
         ruleName = `Review ${toolName}`;
         ruleDescription = `Require manual review for requests to the ${toolName} tool.`;
       }
-      
-      setFormData(prev => ({
+
+      setFormData((prev) => ({
         ...prev,
         name: ruleName,
         description: ruleDescription,
@@ -133,8 +135,9 @@ export const RuleModal: React.FC<RuleModalProps> = ({
       }));
     } else {
       // New rule from scratch
-      const nextPriority = priorityUtils.calculateNextPriority(existingPriorities);
-      setFormData(prev => ({ ...prev, priority: nextPriority }));
+      const nextPriority =
+        priorityUtils.calculateNextPriority(existingPriorities);
+      setFormData((prev) => ({ ...prev, priority: nextPriority }));
     }
   }, [rule, existingPriorities, prePopulatedData]);
 
@@ -142,17 +145,17 @@ export const RuleModal: React.FC<RuleModalProps> = ({
 
   // Build the tool match object based on current form state
   const buildToolMatch = (): ToolMatch | null => {
-    if (formData.toolType === 'builtin') {
+    if (formData.toolType === "builtin") {
       if (!formData.builtInToolName) return null;
       return {
-        type: 'builtin',
+        type: "builtin",
         toolName: formData.builtInToolName,
         optionalSpecifier: formData.builtInSpecifier || undefined,
       };
     } else {
       if (!formData.mcpServerName) return null;
       return {
-        type: 'mcp',
+        type: "mcp",
         serverName: formData.mcpServerName,
         toolName: formData.mcpToolName || undefined,
         optionalSpecifier: formData.mcpSpecifier || "*",
@@ -163,25 +166,28 @@ export const RuleModal: React.FC<RuleModalProps> = ({
   const currentToolMatch = buildToolMatch();
 
   const generateRuleId = (name: string): string => {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '')
-      + '-' + Date.now().toString().slice(-6);
+    return (
+      name
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "") +
+      "-" +
+      Date.now().toString().slice(-6)
+    );
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const toolMatch = buildToolMatch();
     if (!toolMatch) {
       // Should show validation error
       console.error("Tool match validation failed", formData);
       return;
     }
-    
+
     const ruleToSave: ApprovalRule = {
       id: rule?.id || generateRuleId(formData.name),
       name: formData.name,
@@ -191,9 +197,14 @@ export const RuleModal: React.FC<RuleModalProps> = ({
       enabled: formData.enabled,
       match: {
         tool: toolMatch,
-        agentIdentity: formData.agentIdentity && formData.agentIdentity.trim() ? formData.agentIdentity.trim() : undefined,
+        agentIdentity:
+          formData.agentIdentity && formData.agentIdentity.trim()
+            ? formData.agentIdentity.trim()
+            : undefined,
       },
-      timeoutOverride: formData.timeoutOverride.enabled ? formData.timeoutOverride.value : undefined,
+      timeoutOverride: formData.timeoutOverride.enabled
+        ? formData.timeoutOverride.value
+        : undefined,
     };
 
     console.log("Submitting rule:", ruleToSave);
@@ -225,7 +236,7 @@ export const RuleModal: React.FC<RuleModalProps> = ({
               <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
                 Basic Information
               </h3>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Rule Name <span className="text-red-500">*</span>
@@ -233,7 +244,9 @@ export const RuleModal: React.FC<RuleModalProps> = ({
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, name: e.target.value }))
+                  }
                   className="w-full h-11 text-base rounded-md border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-2.5 shadow-sm focus:border-blueprint-500 focus:ring-blueprint-500 hover:border-gray-400 dark:hover:border-gray-500"
                   required
                 />
@@ -245,7 +258,12 @@ export const RuleModal: React.FC<RuleModalProps> = ({
                 </label>
                 <textarea
                   value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
                   className="w-full min-h-[80px] text-base rounded-md border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-2.5 shadow-sm focus:border-blueprint-500 focus:ring-blueprint-500 hover:border-gray-400 dark:hover:border-gray-500 resize-y"
                   rows={3}
                   placeholder="Describe the purpose and scope of this rule..."
@@ -263,50 +281,66 @@ export const RuleModal: React.FC<RuleModalProps> = ({
                   <input
                     type="radio"
                     value="builtin"
-                    checked={formData.toolType === 'builtin'}
-                    onChange={() => setFormData(prev => ({ ...prev, toolType: 'builtin' }))}
+                    checked={formData.toolType === "builtin"}
+                    onChange={() =>
+                      setFormData((prev) => ({ ...prev, toolType: "builtin" }))
+                    }
                     className="text-blueprint-600 focus:ring-blueprint-500"
                   />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Built-in Tool</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                    Built-in Tool
+                  </span>
                 </label>
                 <label className="flex items-center gap-2">
                   <input
                     type="radio"
                     value="mcp"
-                    checked={formData.toolType === 'mcp'}
-                    onChange={() => setFormData(prev => ({ ...prev, toolType: 'mcp' }))}
+                    checked={formData.toolType === "mcp"}
+                    onChange={() =>
+                      setFormData((prev) => ({ ...prev, toolType: "mcp" }))
+                    }
                     className="text-blueprint-600 focus:ring-blueprint-500"
                   />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">MCP Tool</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                    MCP Tool
+                  </span>
                 </label>
               </div>
             </div>
 
             {/* Tool Configuration */}
             <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-              {formData.toolType === 'builtin' ? (
+              {formData.toolType === "builtin" ? (
                 <BuiltInToolForm
                   toolName={formData.builtInToolName}
                   optionalSpecifier={formData.builtInSpecifier}
-                  onToolNameChange={(name) => setFormData(prev => ({ ...prev, builtInToolName: name }))}
-                  onSpecifierChange={(spec) => setFormData(prev => ({ ...prev, builtInSpecifier: spec }))}
+                  onToolNameChange={(name) =>
+                    setFormData((prev) => ({ ...prev, builtInToolName: name }))
+                  }
+                  onSpecifierChange={(spec) =>
+                    setFormData((prev) => ({ ...prev, builtInSpecifier: spec }))
+                  }
                 />
               ) : (
                 <MCPToolForm
                   serverName={formData.mcpServerName}
                   toolName={formData.mcpToolName}
                   optionalSpecifier={formData.mcpSpecifier}
-                  onServerNameChange={(name) => setFormData(prev => ({ ...prev, mcpServerName: name }))}
-                  onToolNameChange={(name) => setFormData(prev => ({ ...prev, mcpToolName: name }))}
-                  onSpecifierChange={(spec) => setFormData(prev => ({ ...prev, mcpSpecifier: spec }))}
+                  onServerNameChange={(name) =>
+                    setFormData((prev) => ({ ...prev, mcpServerName: name }))
+                  }
+                  onToolNameChange={(name) =>
+                    setFormData((prev) => ({ ...prev, mcpToolName: name }))
+                  }
+                  onSpecifierChange={(spec) =>
+                    setFormData((prev) => ({ ...prev, mcpSpecifier: spec }))
+                  }
                 />
               )}
             </div>
 
             {/* Rule Preview */}
-            {currentToolMatch && (
-              <ToolRulePreview tool={currentToolMatch} />
-            )}
+            {currentToolMatch && <ToolRulePreview tool={currentToolMatch} />}
 
             {/* Action */}
             <div className="space-y-4">
@@ -318,31 +352,43 @@ export const RuleModal: React.FC<RuleModalProps> = ({
                   <input
                     type="radio"
                     value="approve"
-                    checked={formData.action === 'approve'}
-                    onChange={() => setFormData(prev => ({ ...prev, action: 'approve' }))}
+                    checked={formData.action === "approve"}
+                    onChange={() =>
+                      setFormData((prev) => ({ ...prev, action: "approve" }))
+                    }
                     className="text-status-success focus:ring-status-success"
                   />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Approve</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                    Approve
+                  </span>
                 </label>
                 <label className="flex items-center gap-2">
                   <input
                     type="radio"
                     value="deny"
-                    checked={formData.action === 'deny'}
-                    onChange={() => setFormData(prev => ({ ...prev, action: 'deny' }))}
+                    checked={formData.action === "deny"}
+                    onChange={() =>
+                      setFormData((prev) => ({ ...prev, action: "deny" }))
+                    }
                     className="text-status-danger focus:ring-status-danger"
                   />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Deny</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                    Deny
+                  </span>
                 </label>
                 <label className="flex items-center gap-2">
                   <input
                     type="radio"
                     value="review"
-                    checked={formData.action === 'review'}
-                    onChange={() => setFormData(prev => ({ ...prev, action: 'review' }))}
+                    checked={formData.action === "review"}
+                    onChange={() =>
+                      setFormData((prev) => ({ ...prev, action: "review" }))
+                    }
                     className="text-status-warning focus:ring-status-warning"
                   />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Manual Review</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                    Manual Review
+                  </span>
                 </label>
               </div>
             </div>
@@ -356,7 +402,7 @@ export const RuleModal: React.FC<RuleModalProps> = ({
                   Coming Soon
                 </div>
               </h3>
-              
+
               {/* Agent Identity */}
               <div className="space-y-2">
                 <label className="flex items-center gap-2 cursor-not-allowed">
@@ -391,25 +437,32 @@ export const RuleModal: React.FC<RuleModalProps> = ({
                   <input
                     type="checkbox"
                     checked={formData.timeoutOverride.enabled}
-                    onChange={(e) => setFormData(prev => ({ 
-                      ...prev, 
-                      timeoutOverride: { ...prev.timeoutOverride, enabled: e.target.checked }
-                    }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        timeoutOverride: {
+                          ...prev.timeoutOverride,
+                          enabled: e.target.checked,
+                        },
+                      }))
+                    }
                     className="rounded border-gray-300 text-blueprint-600 focus:ring-blueprint-500"
                   />
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     Override Timeout
                   </span>
                 </label>
-                
+
                 {formData.timeoutOverride.enabled && (
                   <div className="ml-6">
                     <DurationPicker
                       value={formData.timeoutOverride.value}
-                      onChange={(value) => setFormData(prev => ({ 
-                        ...prev, 
-                        timeoutOverride: { ...prev.timeoutOverride, value }
-                      }))}
+                      onChange={(value) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          timeoutOverride: { ...prev.timeoutOverride, value },
+                        }))
+                      }
                       min={1000}
                     />
                   </div>
@@ -420,11 +473,7 @@ export const RuleModal: React.FC<RuleModalProps> = ({
 
           {/* Footer */}
           <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-            >
+            <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
             <Button

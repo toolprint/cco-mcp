@@ -17,8 +17,12 @@ interface HeaderProps {
   configRefreshTrigger?: number; // Used to trigger config refresh
 }
 
-const HeaderBase: React.FC<HeaderProps> = ({ isHealthy, configRefreshTrigger }) => {
-  const [autoApprovalInfo, setAutoApprovalInfo] = useState<AutoApprovalInfo | null>(null);
+const HeaderBase: React.FC<HeaderProps> = ({
+  isHealthy,
+  configRefreshTrigger,
+}) => {
+  const [autoApprovalInfo, setAutoApprovalInfo] =
+    useState<AutoApprovalInfo | null>(null);
   const { isConnected } = useSSEConnection();
 
   useEffect(() => {
@@ -33,8 +37,9 @@ const HeaderBase: React.FC<HeaderProps> = ({ isHealthy, configRefreshTrigger }) 
       .catch(() => setAutoApprovalInfo(null));
   }, [isHealthy, configRefreshTrigger]); // Re-fetch when health status changes or config updates
 
-  const showWarningBanner = autoApprovalInfo?.enabled && autoApprovalInfo?.defaultAction !== "review";
-  
+  const showWarningBanner =
+    autoApprovalInfo?.enabled && autoApprovalInfo?.defaultAction !== "review";
+
   return (
     <header className="sticky top-0 z-50 w-full bg-white dark:bg-gray-800 shadow-sm">
       {/* Warning banner for non-review default actions */}
@@ -44,16 +49,14 @@ const HeaderBase: React.FC<HeaderProps> = ({ isHealthy, configRefreshTrigger }) 
             <AlertTriangle className="h-6 w-6 text-amber-700 dark:text-amber-500 animate-pulse" />
             <div className="flex flex-col items-center">
               <span className="text-base font-semibold text-amber-900 dark:text-amber-100 uppercase tracking-wide">
-                {autoApprovalInfo?.defaultAction === "approve" 
+                {autoApprovalInfo?.defaultAction === "approve"
                   ? "⚠️ DEFAULT ACTION: AUTO-APPROVE (Reviewing Disabled)"
-                  : "⚠️ DEFAULT ACTION: AUTO-DENY (Reviewing Disabled)"
-                }
+                  : "⚠️ DEFAULT ACTION: AUTO-DENY (Reviewing Disabled)"}
               </span>
               <span className="text-sm text-amber-800 dark:text-amber-200">
                 {autoApprovalInfo?.defaultAction === "approve"
                   ? "All unmatched requests will be automatically approved"
-                  : "All unmatched requests will be automatically denied"
-                }
+                  : "All unmatched requests will be automatically denied"}
               </span>
             </div>
             <AlertTriangle className="h-6 w-6 text-amber-700 dark:text-amber-500 animate-pulse" />
@@ -67,7 +70,15 @@ const HeaderBase: React.FC<HeaderProps> = ({ isHealthy, configRefreshTrigger }) 
             {/* Logo and Title */}
             <div className="flex items-center">
               <div className="flex items-center p-2.5 bg-blueprint-50 dark:bg-blueprint-900/20 rounded-lg border border-blueprint-200 dark:border-blueprint-700">
-                <img src="/eye-magnifier.svg" alt="CCO Monitor" className="h-8 w-8" style={{ filter: "brightness(0) saturate(100%) invert(37%) sepia(93%) saturate(1250%) hue-rotate(199deg) brightness(95%) contrast(86%)" }} />
+                <img
+                  src="/eye-magnifier.svg"
+                  alt="CCO Monitor"
+                  className="h-8 w-8"
+                  style={{
+                    filter:
+                      "brightness(0) saturate(100%) invert(37%) sepia(93%) saturate(1250%) hue-rotate(199deg) brightness(95%) contrast(86%)",
+                  }}
+                />
               </div>
               <div className="ml-4">
                 <h1 className="text-xl font-semibold text-slate-800 dark:text-white">
@@ -83,18 +94,22 @@ const HeaderBase: React.FC<HeaderProps> = ({ isHealthy, configRefreshTrigger }) 
 
             {/* Navigation and Status Indicators */}
             <div className="flex items-center space-x-4">
-
               {/* Approval System Status */}
               {autoApprovalInfo !== null && (
                 <Badge
                   variant={autoApprovalInfo.enabled ? "success" : "outline"}
                   className="flex items-center gap-1.5"
                 >
-                  <div className={cn(
-                    "h-2 w-2 rounded-full",
-                    autoApprovalInfo.enabled ? "bg-green-500" : "bg-gray-400"
-                  )} />
-                  <span>Approvals {autoApprovalInfo.enabled ? "Enabled" : "Disabled"}</span>
+                  <div
+                    className={cn(
+                      "h-2 w-2 rounded-full",
+                      autoApprovalInfo.enabled ? "bg-green-500" : "bg-gray-400"
+                    )}
+                  />
+                  <span>
+                    Approvals{" "}
+                    {autoApprovalInfo.enabled ? "Enabled" : "Disabled"}
+                  </span>
                 </Badge>
               )}
 

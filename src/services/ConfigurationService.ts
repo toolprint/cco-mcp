@@ -6,21 +6,21 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { watch, FSWatcher } from "fs";
 import { EventEmitter } from "events";
 import logger from "../logger.js";
-import { 
-  CCOMCPConfig, 
-  ApprovalRule, 
-  ApprovalAction, 
+import {
+  CCOMCPConfig,
+  ApprovalRule,
+  ApprovalAction,
   RuleMatchResult,
   ToolMatch,
 } from "../config/types.js";
-import { 
-  validateConfig, 
+import {
+  validateConfig,
   DEFAULT_CONFIG,
   CCOMCPConfigSchema,
 } from "../config/schema.js";
-import { 
-  CONFIG_DIR, 
-  CONFIG_FILE_PATH, 
+import {
+  CONFIG_DIR,
+  CONFIG_FILE_PATH,
   ENV_VARS,
   WILDCARD_CHARS,
 } from "../config/constants.js";
@@ -38,9 +38,9 @@ export interface ToolCallInfo {
  * Configuration service events
  */
 export interface ConfigurationServiceEvents {
-  'config-loaded': (config: CCOMCPConfig) => void;
-  'config-updated': (config: CCOMCPConfig) => void;
-  'config-error': (error: Error) => void;
+  "config-loaded": (config: CCOMCPConfig) => void;
+  "config-updated": (config: CCOMCPConfig) => void;
+  "config-error": (error: Error) => void;
 }
 
 /**
@@ -53,7 +53,8 @@ export class ConfigurationService extends EventEmitter {
 
   constructor(configPath?: string) {
     super();
-    this.configPath = configPath || process.env[ENV_VARS.CONFIG_PATH] || CONFIG_FILE_PATH;
+    this.configPath =
+      configPath || process.env[ENV_VARS.CONFIG_PATH] || CONFIG_FILE_PATH;
     this.config = DEFAULT_CONFIG;
     this.loadConfiguration();
   }
@@ -89,7 +90,7 @@ export class ConfigurationService extends EventEmitter {
   /**
    * Get timeout default action
    */
-  getTimeoutAction(): 'approve' | 'deny' {
+  getTimeoutAction(): "approve" | "deny" {
     return this.config.approvals.timeout.defaultAction;
   }
 
@@ -105,20 +106,20 @@ export class ConfigurationService extends EventEmitter {
     }
 
     const { rules } = this.config.approvals;
-    
+
     // Sort rules by priority (lower number = higher priority)
     const sortedRules = [...rules]
-      .filter(rule => rule.enabled !== false)
+      .filter((rule) => rule.enabled !== false)
       .sort((a, b) => a.priority - b.priority);
 
     for (const rule of sortedRules) {
       if (this.matchesRule(toolCall, rule)) {
         logger.debug(
-          { 
-            rule: rule.name, 
+          {
+            rule: rule.name,
             toolName: toolCall.toolName,
             action: rule.action,
-          }, 
+          },
           "Rule matched"
         );
         return {
@@ -138,13 +139,13 @@ export class ConfigurationService extends EventEmitter {
   /**
    * Get the action to take for a tool call
    */
-  getActionForToolCall(toolCall: ToolCallInfo): { 
-    action: ApprovalAction; 
+  getActionForToolCall(toolCall: ToolCallInfo): {
+    action: ApprovalAction;
     rule?: ApprovalRule;
     timeout?: number;
   } {
     const matchResult = this.matchRules(toolCall);
-    
+
     if (matchResult.matched && matchResult.rule) {
       return {
         action: matchResult.rule.action,
@@ -173,14 +174,19 @@ export class ConfigurationService extends EventEmitter {
 
     // Check agent identity (simple string match for now)
     if (match.agentIdentity) {
-      if (!toolCall.agentIdentity || toolCall.agentIdentity !== match.agentIdentity) {
+      if (
+        !toolCall.agentIdentity ||
+        toolCall.agentIdentity !== match.agentIdentity
+      ) {
         return false;
       }
     }
 
     // Check input parameters (exact match) - future feature
     if (match.inputParameters) {
-      for (const [key, expectedValue] of Object.entries(match.inputParameters)) {
+      for (const [key, expectedValue] of Object.entries(
+        match.inputParameters
+      )) {
         if (!this.deepEqual(toolCall.input[key], expectedValue)) {
           return false;
         }
@@ -194,35 +200,35 @@ export class ConfigurationService extends EventEmitter {
    * Check if a tool call matches a tool configuration
    */
   private matchesTool(toolName: string, tool: ToolMatch): boolean {
-    if (tool.type === 'builtin') {
+    if (tool.type === "builtin") {
       // For built-in tools, check exact match of tool name
       if (toolName !== tool.toolName) {
         return false;
       }
-      
+
       // If there's an optional specifier, we need to check if the tool call includes it
       // For now, we'll accept any call to the tool (specifier validation would be done elsewhere)
       return true;
     } else {
       // MCP tool matching
       // Expected format: mcp__serverName__toolName
-      const parts = toolName.split('__');
-      if (parts.length < 2 || parts[0] !== 'mcp') {
+      const parts = toolName.split("__");
+      if (parts.length < 2 || parts[0] !== "mcp") {
         return false;
       }
-      
+
       const [, serverName, mcpToolName] = parts;
-      
+
       // Check server name match
       if (serverName !== tool.serverName) {
         return false;
       }
-      
+
       // If tool name is specified, check it matches
       if (tool.toolName && mcpToolName !== tool.toolName) {
         return false;
       }
-      
+
       return true;
     }
   }
@@ -231,16 +237,16 @@ export class ConfigurationService extends EventEmitter {
    * Get value by JSON path
    */
   private getValueByPath(obj: any, path: string): any {
-    const parts = path.split('.');
+    const parts = path.split(".");
     let current = obj;
-    
+
     for (const part of parts) {
       if (current === null || current === undefined) {
         return undefined;
       }
       current = current[part];
     }
-    
+
     return current;
   }
 
@@ -251,20 +257,20 @@ export class ConfigurationService extends EventEmitter {
     if (a === b) return true;
     if (a === null || b === null) return false;
     if (typeof a !== typeof b) return false;
-    
-    if (typeof a === 'object') {
+
+    if (typeof a === "object") {
       const aKeys = Object.keys(a);
       const bKeys = Object.keys(b);
-      
+
       if (aKeys.length !== bKeys.length) return false;
-      
+
       for (const key of aKeys) {
         if (!this.deepEqual(a[key], b[key])) return false;
       }
-      
+
       return true;
     }
-    
+
     return false;
   }
 
@@ -282,33 +288,45 @@ export class ConfigurationService extends EventEmitter {
       if (!existsSync(this.configPath)) {
         // Create default config file
         this.saveConfiguration(DEFAULT_CONFIG);
-        logger.info({ path: this.configPath }, "Created default configuration file");
+        logger.info(
+          { path: this.configPath },
+          "Created default configuration file"
+        );
       }
 
       // Read and parse config file
-      const configData = readFileSync(this.configPath, 'utf-8');
+      const configData = readFileSync(this.configPath, "utf-8");
       const parsedConfig = JSON.parse(configData);
 
       // Validate configuration
       const validation = validateConfig(parsedConfig);
       if (!validation.success) {
         logger.error(
-          { errors: validation.error.errors, path: this.configPath }, 
+          { errors: validation.error.errors, path: this.configPath },
           "Invalid configuration file"
         );
-        this.emit('config-error', new Error("Invalid configuration: " + validation.error.message));
+        this.emit(
+          "config-error",
+          new Error("Invalid configuration: " + validation.error.message)
+        );
         return;
       }
 
       this.config = validation.data;
-      logger.info({ path: this.configPath }, "Configuration loaded successfully");
-      this.emit('config-loaded', this.config);
+      logger.info(
+        { path: this.configPath },
+        "Configuration loaded successfully"
+      );
+      this.emit("config-loaded", this.config);
 
       // Set up file watcher
       this.setupFileWatcher();
     } catch (error) {
-      logger.error({ error, path: this.configPath }, "Failed to load configuration");
-      this.emit('config-error', error as Error);
+      logger.error(
+        { error, path: this.configPath },
+        "Failed to load configuration"
+      );
+      this.emit("config-error", error as Error);
     }
   }
 
@@ -318,7 +336,7 @@ export class ConfigurationService extends EventEmitter {
   saveConfiguration(config?: CCOMCPConfig): void {
     try {
       const configToSave = config || this.config;
-      
+
       // Validate before saving
       const validation = validateConfig(configToSave);
       if (!validation.success) {
@@ -332,16 +350,22 @@ export class ConfigurationService extends EventEmitter {
 
       // Write config file
       writeFileSync(
-        this.configPath, 
-        JSON.stringify(configToSave, null, 2), 
-        'utf-8'
+        this.configPath,
+        JSON.stringify(configToSave, null, 2),
+        "utf-8"
       );
 
       this.config = configToSave;
-      logger.info({ path: this.configPath }, "Configuration saved successfully");
-      this.emit('config-updated', this.config);
+      logger.info(
+        { path: this.configPath },
+        "Configuration saved successfully"
+      );
+      this.emit("config-updated", this.config);
     } catch (error) {
-      logger.error({ error, path: this.configPath }, "Failed to save configuration");
+      logger.error(
+        { error, path: this.configPath },
+        "Failed to save configuration"
+      );
       throw error;
     }
   }
@@ -375,10 +399,10 @@ export class ConfigurationService extends EventEmitter {
    * Update an approval rule
    */
   updateRule(ruleId: string, updates: Partial<ApprovalRule>): void {
-    const rules = this.config.approvals.rules.map(rule =>
+    const rules = this.config.approvals.rules.map((rule) =>
       rule.id === ruleId ? { ...rule, ...updates } : rule
     );
-    
+
     this.updateConfiguration({
       approvals: {
         ...this.config.approvals,
@@ -391,7 +415,9 @@ export class ConfigurationService extends EventEmitter {
    * Remove an approval rule
    */
   removeRule(ruleId: string): void {
-    const rules = this.config.approvals.rules.filter(rule => rule.id !== ruleId);
+    const rules = this.config.approvals.rules.filter(
+      (rule) => rule.id !== ruleId
+    );
     this.updateConfiguration({
       approvals: {
         ...this.config.approvals,
@@ -409,8 +435,11 @@ export class ConfigurationService extends EventEmitter {
     }
 
     this.fileWatcher = watch(this.configPath, (eventType) => {
-      if (eventType === 'change') {
-        logger.info({ path: this.configPath }, "Configuration file changed, reloading");
+      if (eventType === "change") {
+        logger.info(
+          { path: this.configPath },
+          "Configuration file changed, reloading"
+        );
         this.loadConfiguration();
       }
     });

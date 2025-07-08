@@ -4,7 +4,10 @@ import { z } from "zod";
 import logger from "./logger.js";
 import { getAuditLogService } from "./routes/audit.js";
 import { AuditLogEntry } from "./audit/types.js";
-import { getConfigurationService, ToolCallInfo } from "./services/ConfigurationService.js";
+import {
+  getConfigurationService,
+  ToolCallInfo,
+} from "./services/ConfigurationService.js";
 import { ApprovalRule } from "./config/types.js";
 
 const server = new McpServer({
@@ -75,22 +78,26 @@ server.tool(
         input: input,
       };
 
-      const { action, rule, timeout } = configService.getActionForToolCall(toolCall);
+      const { action, rule, timeout } =
+        configService.getActionForToolCall(toolCall);
 
       // Handle immediate approve/deny based on rules
-      if (action === 'approve') {
+      if (action === "approve") {
         const decisionBy = rule ? `rule:${rule.id}` : "config:default-approve";
         const updatedEntry = await auditService.updateEntry(
           entry.id,
           "APPROVED",
           decisionBy
         );
-        logger.info({ 
-          entryId: entry.id, 
-          rule: rule?.name, 
-          decisionBy 
-        }, "Auto-approved tool call");
-        
+        logger.info(
+          {
+            entryId: entry.id,
+            rule: rule?.name,
+            decisionBy,
+          },
+          "Auto-approved tool call"
+        );
+
         // Add rule information to audit log
         if (rule) {
           (updatedEntry as any).matched_rule = {
@@ -98,25 +105,28 @@ server.tool(
             name: rule.name,
           };
         }
-        
+
         return {
           content: [approvedResponse(input)],
         };
       }
 
-      if (action === 'deny') {
+      if (action === "deny") {
         const decisionBy = rule ? `rule:${rule.id}` : "config:default-deny";
         const updatedEntry = await auditService.updateEntry(
           entry.id,
           "DENIED",
           decisionBy
         );
-        logger.info({ 
-          entryId: entry.id, 
-          rule: rule?.name, 
-          decisionBy 
-        }, "Auto-denied tool call");
-        
+        logger.info(
+          {
+            entryId: entry.id,
+            rule: rule?.name,
+            decisionBy,
+          },
+          "Auto-denied tool call"
+        );
+
         // Add rule information to audit log
         if (rule) {
           (updatedEntry as any).matched_rule = {
@@ -124,9 +134,15 @@ server.tool(
             name: rule.name,
           };
         }
-        
+
         return {
-          content: [deniedResponse(rule ? `Denied by rule: ${rule.name}` : "Denied by default configuration")],
+          content: [
+            deniedResponse(
+              rule
+                ? `Denied by rule: ${rule.name}`
+                : "Denied by default configuration"
+            ),
+          ],
         };
       }
 
@@ -136,12 +152,15 @@ server.tool(
       const pollInterval = 1000; // Poll every second
       const timeoutMs = timeout || configService.getTimeoutMs();
 
-      logger.info({ 
-        entryId: entry.id, 
-        action, 
-        timeoutMs,
-        rule: rule?.name,
-      }, "Waiting for manual review");
+      logger.info(
+        {
+          entryId: entry.id,
+          action,
+          timeoutMs,
+          rule: rule?.name,
+        },
+        "Waiting for manual review"
+      );
 
       while (Date.now() - startTime < timeoutMs) {
         const currentEntry = await auditService.getEntry(entry.id);
@@ -190,12 +209,15 @@ server.tool(
 
       // Timeout reached without approval - apply timeout action
       const timeoutAction = configService.getTimeoutAction();
-      logger.warn({ 
-        entryId: entry.id, 
-        timeoutAction 
-      }, "Approval request timed out");
+      logger.warn(
+        {
+          entryId: entry.id,
+          timeoutAction,
+        },
+        "Approval request timed out"
+      );
 
-      if (timeoutAction === 'approve') {
+      if (timeoutAction === "approve") {
         await auditService.updateEntry(
           entry.id,
           "APPROVED",

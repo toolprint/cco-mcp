@@ -23,9 +23,7 @@ export const Toggle: React.FC<ToggleProps> = ({
       onClick={() => onChange(!checked)}
       className={cn(
         "relative inline-flex h-6 w-11 items-center rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-blueprint-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-        checked
-          ? "bg-blueprint-500"
-          : "bg-gray-200 dark:bg-gray-700",
+        checked ? "bg-blueprint-500" : "bg-gray-200 dark:bg-gray-700",
         className
       )}
     >

@@ -148,10 +148,12 @@ pnpm build
 CCO-MCP uses a flexible rule-based configuration system for managing approvals. By default, approval mode is enabled and all requests require manual review. You can customize this behavior by creating rules in the configuration file.
 
 The system supports two types of tool matching:
+
 - **Built-in tools**: Standard MCP tools like Read, Write, Bash, etc.
 - **MCP server tools**: Tools from external MCP servers (e.g., git, docker, sentry)
 
 Example rule structure:
+
 ```json
 {
   "id": "allow-reads",
@@ -162,13 +164,14 @@ Example rule structure:
       "type": "builtin",
       "toolName": "Read"
     },
-    "agentIdentity": "claude-code"  // Optional
+    "agentIdentity": "claude-code" // Optional
   },
   "action": "approve"
 }
 ```
 
 See [Configuration Guide](docs/CONFIGURATION.md) for detailed documentation on:
+
 - Creating approval rules with the new ToolMatch format
 - Configuring built-in vs MCP server tool rules
 - Setting up agent-specific permissions
