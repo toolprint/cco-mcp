@@ -8,8 +8,9 @@ import type {
   ApprovalsConfig, 
   ApprovalRule, 
   MatchCriteria, 
-  MatchPattern, 
-  MatchCondition,
+  ToolMatch,
+  BuiltInToolMatch,
+  MCPToolMatch,
   ApprovalAction,
   TimeoutConfig 
 } from "./types.js";
@@ -20,61 +21,40 @@ import type {
 export const ApprovalActionSchema = z.enum(['approve', 'deny', 'review']);
 
 /**
- * Schema for match pattern types
+ * Schema for built-in tool match
  */
-export const MatchPatternTypeSchema = z.enum(['exact', 'wildcard', 'regex']);
+export const BuiltInToolMatchSchema = z.object({
+  type: z.literal('builtin'),
+  toolName: z.string().min(1, "Tool name cannot be empty"),
+  optionalSpecifier: z.string().optional(),
+}) satisfies z.ZodType<BuiltInToolMatch>;
 
 /**
- * Schema for match operators
+ * Schema for MCP tool match
  */
-export const MatchOperatorSchema = z.enum([
-  'equals', 
-  'contains', 
-  'startsWith', 
-  'endsWith', 
-  'matches', 
-  'in', 
-  'notIn'
-]);
+export const MCPToolMatchSchema = z.object({
+  type: z.literal('mcp'),
+  serverName: z.string().min(1, "Server name cannot be empty"),
+  toolName: z.string().optional(),
+  optionalSpecifier: z.string().optional(),
+}) satisfies z.ZodType<MCPToolMatch>;
 
 /**
- * Schema for match patterns
+ * Schema for tool match (union of built-in and MCP)
  */
-export const MatchPatternSchema = z.object({
-  type: MatchPatternTypeSchema,
-  value: z.string().min(1, "Pattern value cannot be empty"),
-  caseSensitive: z.boolean().optional().default(false),
-}) satisfies z.ZodType<MatchPattern>;
-
-/**
- * Schema for match conditions
- */
-export const MatchConditionSchema = z.object({
-  field: z.string().min(1, "Field path cannot be empty"),
-  operator: MatchOperatorSchema,
-  value: z.any(),
-  caseSensitive: z.boolean().optional().default(false),
-}) satisfies z.ZodType<MatchCondition>;
+export const ToolMatchSchema = z.discriminatedUnion('type', [
+  BuiltInToolMatchSchema,
+  MCPToolMatchSchema,
+]) satisfies z.ZodType<ToolMatch>;
 
 /**
  * Schema for match criteria
  */
 export const MatchCriteriaSchema = z.object({
-  toolName: MatchPatternSchema.optional(),
-  agentIdentity: MatchPatternSchema.optional(),
+  tool: ToolMatchSchema,
+  agentIdentity: z.string().optional(),
   inputParameters: z.record(z.any()).optional(),
-  conditions: z.array(MatchConditionSchema).optional(),
-}).refine(
-  (data) => {
-    // At least one matching criterion must be specified
-    return data.toolName || data.agentIdentity || 
-           (data.inputParameters && Object.keys(data.inputParameters).length > 0) ||
-           (data.conditions && data.conditions.length > 0);
-  },
-  {
-    message: "At least one matching criterion must be specified",
-  }
-) satisfies z.ZodType<MatchCriteria>;
+}) satisfies z.ZodType<MatchCriteria>;
 
 /**
  * Schema for approval rules
@@ -115,16 +95,6 @@ export const ApprovalsConfigSchema = z.object({
   },
   {
     message: "Rule IDs must be unique",
-  }
-).refine(
-  (data) => {
-    // Check for duplicate priorities
-    const priorities = data.rules.map(r => r.priority);
-    const uniquePriorities = new Set(priorities);
-    return priorities.length === uniquePriorities.size;
-  },
-  {
-    message: "Rule priorities must be unique",
   }
 ) satisfies z.ZodType<ApprovalsConfig>;
 

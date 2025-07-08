@@ -1,6 +1,5 @@
 import { useState, useCallback } from "react";
 import { priorityUtils } from "../utils/priority";
-import { ruleToServerFormat } from "../utils/ruleMigration";
 import type { ApprovalRule, RuleTestRequest, RuleTestResponse } from "../types/config";
 
 export function useConfigurationRules() {
@@ -33,17 +32,12 @@ export function useConfigurationRules() {
     setError(null);
     
     try {
-      console.log("Creating rule (new format):", rule);
-      // Convert to server format
-      const serverRule = ruleToServerFormat(rule);
-      console.log("Sending to server (old format):", serverRule);
-      
       const response = await fetch("/api/config/rules", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(serverRule),
+        body: JSON.stringify(rule),
       });
 
       if (!response.ok) {

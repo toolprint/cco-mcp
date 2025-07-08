@@ -7,7 +7,7 @@ import { RuleModal } from "../components/config/RuleModal";
 import { useConfiguration } from "../hooks/useConfiguration";
 import { useConfigurationRules } from "../hooks/useConfigurationRules";
 import { useToast } from "../hooks/useToast";
-import { migrateRules } from "../utils/ruleMigration";
+import { ToastContainer } from "../components/Toast";
 import type { ApprovalRule } from "../types/config";
 
 export function Configuration() {
@@ -19,7 +19,7 @@ export function Configuration() {
   const navigate = useNavigate();
   const { config, loading, error, patchConfig, refetch } = useConfiguration();
   const rulesApi = useConfigurationRules();
-  const { success: showSuccess, error: showError } = useToast();
+  const { toasts, removeToast, success: showSuccess, error: showError } = useToast();
 
   // Check if we have pre-populated data from navigation
   const createRuleData = location.state?.createRuleData;
@@ -183,7 +183,7 @@ export function Configuration() {
 
           {/* Rules Management */}
           <RulesList
-            rules={migrateRules(config.approvals.rules)}
+            rules={config.approvals.rules}
             onCreateRule={handleCreateRule}
             onUpdateRule={handleUpdateRule}
             onDeleteRule={handleDeleteRule}
@@ -206,6 +206,8 @@ export function Configuration() {
           prePopulatedData={createRuleData}
         />
       )}
+      
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   );
 }

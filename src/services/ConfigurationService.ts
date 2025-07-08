@@ -11,8 +11,7 @@ import {
   ApprovalRule, 
   ApprovalAction, 
   RuleMatchResult,
-  MatchPattern,
-  MatchCondition,
+  ToolMatch,
 } from "../config/types.js";
 import { 
   validateConfig, 
@@ -167,34 +166,22 @@ export class ConfigurationService extends EventEmitter {
   private matchesRule(toolCall: ToolCallInfo, rule: ApprovalRule): boolean {
     const { match } = rule;
 
-    // Check tool name
-    if (match.toolName && !this.matchesPattern(toolCall.toolName, match.toolName)) {
+    // Check tool match
+    if (!this.matchesTool(toolCall.toolName, match.tool)) {
       return false;
     }
 
-    // Check agent identity
-    if (match.agentIdentity && toolCall.agentIdentity) {
-      if (!this.matchesPattern(toolCall.agentIdentity, match.agentIdentity)) {
+    // Check agent identity (simple string match for now)
+    if (match.agentIdentity) {
+      if (!toolCall.agentIdentity || toolCall.agentIdentity !== match.agentIdentity) {
         return false;
       }
-    } else if (match.agentIdentity && !toolCall.agentIdentity) {
-      // Rule requires agent identity but none provided
-      return false;
     }
 
-    // Check input parameters (exact match)
+    // Check input parameters (exact match) - future feature
     if (match.inputParameters) {
       for (const [key, expectedValue] of Object.entries(match.inputParameters)) {
         if (!this.deepEqual(toolCall.input[key], expectedValue)) {
-          return false;
-        }
-      }
-    }
-
-    // Check advanced conditions
-    if (match.conditions && match.conditions.length > 0) {
-      for (const condition of match.conditions) {
-        if (!this.matchesCondition(toolCall.input, condition)) {
           return false;
         }
       }
@@ -204,107 +191,39 @@ export class ConfigurationService extends EventEmitter {
   }
 
   /**
-   * Check if a value matches a pattern
+   * Check if a tool call matches a tool configuration
    */
-  private matchesPattern(value: string, pattern: MatchPattern): boolean {
-    const { type, value: patternValue, caseSensitive } = pattern;
-    const compareValue = caseSensitive ? value : value.toLowerCase();
-    const comparePattern = caseSensitive ? patternValue : patternValue.toLowerCase();
-
-    switch (type) {
-      case 'exact':
-        return compareValue === comparePattern;
-      
-      case 'wildcard':
-        return this.matchesWildcard(compareValue, comparePattern);
-      
-      case 'regex':
-        try {
-          const regex = new RegExp(patternValue, caseSensitive ? '' : 'i');
-          return regex.test(value);
-        } catch (e) {
-          logger.warn({ pattern: patternValue, error: e }, "Invalid regex pattern");
-          return false;
-        }
-      
-      default:
+  private matchesTool(toolName: string, tool: ToolMatch): boolean {
+    if (tool.type === 'builtin') {
+      // For built-in tools, check exact match of tool name
+      if (toolName !== tool.toolName) {
         return false;
-    }
-  }
-
-  /**
-   * Check if a value matches a wildcard pattern
-   */
-  private matchesWildcard(value: string, pattern: string): boolean {
-    // Convert wildcard pattern to regex
-    let regexPattern = pattern
-      .split(WILDCARD_CHARS.MULTIPLE).map(part => 
-        part.split(WILDCARD_CHARS.SINGLE).map(p => 
-          this.escapeRegex(p)
-        ).join('.')
-      ).join('.*');
-    
-    const regex = new RegExp(`^${regexPattern}$`);
-    return regex.test(value);
-  }
-
-  /**
-   * Escape special regex characters
-   */
-  private escapeRegex(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  }
-
-  /**
-   * Check if a condition matches
-   */
-  private matchesCondition(input: Record<string, any>, condition: MatchCondition): boolean {
-    const value = this.getValueByPath(input, condition.field);
-    if (value === undefined) {
-      return false;
-    }
-
-    const { operator, value: expectedValue, caseSensitive } = condition;
-    
-    // Convert to strings for comparison if needed
-    const compareValue = caseSensitive ? String(value) : String(value).toLowerCase();
-    const compareExpected = caseSensitive ? String(expectedValue) : String(expectedValue).toLowerCase();
-
-    switch (operator) {
-      case 'equals':
-        return this.deepEqual(value, expectedValue);
+      }
       
-      case 'contains':
-        return compareValue.includes(compareExpected);
-      
-      case 'startsWith':
-        return compareValue.startsWith(compareExpected);
-      
-      case 'endsWith':
-        return compareValue.endsWith(compareExpected);
-      
-      case 'matches':
-        try {
-          const regex = new RegExp(String(expectedValue), caseSensitive ? '' : 'i');
-          return regex.test(String(value));
-        } catch (e) {
-          return false;
-        }
-      
-      case 'in':
-        if (Array.isArray(expectedValue)) {
-          return expectedValue.some(v => this.deepEqual(value, v));
-        }
+      // If there's an optional specifier, we need to check if the tool call includes it
+      // For now, we'll accept any call to the tool (specifier validation would be done elsewhere)
+      return true;
+    } else {
+      // MCP tool matching
+      // Expected format: mcp__serverName__toolName
+      const parts = toolName.split('__');
+      if (parts.length < 2 || parts[0] !== 'mcp') {
         return false;
+      }
       
-      case 'notIn':
-        if (Array.isArray(expectedValue)) {
-          return !expectedValue.some(v => this.deepEqual(value, v));
-        }
-        return true;
+      const [, serverName, mcpToolName] = parts;
       
-      default:
+      // Check server name match
+      if (serverName !== tool.serverName) {
         return false;
+      }
+      
+      // If tool name is specified, check it matches
+      if (tool.toolName && mcpToolName !== tool.toolName) {
+        return false;
+      }
+      
+      return true;
     }
   }
 

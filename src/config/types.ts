@@ -57,51 +57,43 @@ export interface ApprovalRule {
 }
 
 /**
+ * Tool types following Claude Code's permission system
+ */
+export type ToolType = 'builtin' | 'mcp';
+
+/**
+ * Built-in tool matching configuration
+ */
+export interface BuiltInToolMatch {
+  type: 'builtin';
+  toolName: string; // e.g., 'Bash', 'Edit', 'Read'
+  optionalSpecifier?: string; // e.g., "npm run test:*" for Bash, "docs/**" for Edit/Read
+}
+
+/**
+ * MCP tool matching configuration
+ */
+export interface MCPToolMatch {
+  type: 'mcp';
+  serverName: string; // MCP server name (required)
+  toolName?: string; // Specific tool name (optional - if omitted, matches all tools on server)
+  optionalSpecifier?: string; // Optional specifier (defaults to "*")
+}
+
+export type ToolMatch = BuiltInToolMatch | MCPToolMatch;
+
+/**
  * Criteria for matching tool calls against rules
  */
 export interface MatchCriteria {
-  /** Match against tool name */
-  toolName?: MatchPattern;
+  /** Tool matching configuration */
+  tool: ToolMatch;
   
-  /** Match against agent identity */
-  agentIdentity?: MatchPattern;
+  /** Match against agent identity (simplified for future use) */
+  agentIdentity?: string;
   
-  /** Match against input parameters (exact match) */
+  /** Match against input parameters (future feature) */
   inputParameters?: Record<string, any>;
-  
-  /** Advanced conditions for complex matching */
-  conditions?: MatchCondition[];
-}
-
-/**
- * Pattern matching configuration
- */
-export interface MatchPattern {
-  /** Type of pattern matching to use */
-  type: 'exact' | 'wildcard' | 'regex';
-  
-  /** The pattern value */
-  value: string;
-  
-  /** Case sensitive matching (default: false) */
-  caseSensitive?: boolean;
-}
-
-/**
- * Advanced matching condition
- */
-export interface MatchCondition {
-  /** JSON path to the field in tool input (e.g., "file_path", "command.name") */
-  field: string;
-  
-  /** Comparison operator */
-  operator: 'equals' | 'contains' | 'startsWith' | 'endsWith' | 'matches' | 'in' | 'notIn';
-  
-  /** Value to compare against */
-  value: any;
-  
-  /** Case sensitive comparison (default: false) */
-  caseSensitive?: boolean;
 }
 
 /**
