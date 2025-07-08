@@ -48,11 +48,17 @@ CCO-MCP provides a secure approval layer for AI tool calls with:
    - `POST /api/audit-log/:id/approve` - Approve a tool request
    - `POST /api/audit-log/:id/deny` - Deny a tool request
    - `GET /api/audit-log/stream` - SSE endpoint for real-time updates
+   - `GET /api/config` - Get current configuration
+   - `PATCH /api/config` - Update configuration settings
+   - `GET /api/config/rules` - List all approval rules
+   - `POST /api/config/rules` - Add new approval rule
+   - `PUT /api/config/rules/:id` - Update existing rule
+   - `DELETE /api/config/rules/:id` - Delete rule
 
 3. **MCP Integration**
    - `approval_prompt` tool that integrates with the audit log
    - Polling mechanism to wait for approval/denial
-   - Environment variable support for auto-approval mode
+   - Rule-based auto-approval system with priority ordering
 
 ### Frontend (React/TypeScript/Vite)
 
@@ -61,6 +67,7 @@ CCO-MCP provides a secure approval layer for AI tool calls with:
    - Live updates via SSE integration
    - Visual indicators for connection status
    - Toast notifications for important events
+   - Auto-refresh of pending approvals
 
 2. **Filtering & Search**
 
@@ -72,15 +79,25 @@ CCO-MCP provides a secure approval layer for AI tool calls with:
 3. **Interactive Controls**
 
    - One-click approve/deny actions
-   - Bulk actions support
-   - Collapsible filter panel
-   - Statistics overview
+   - Create rules from audit log entries
+   - Navigate to configuration page
+   - Statistics overview with charts
 
-4. **UI Polish**
+4. **Configuration Management**
+
+   - Visual rule editor with drag-and-drop priority management
+   - Built-in and MCP tool type selection
+   - Live rule testing and validation
+   - Import/export configuration support
+   - Rule templates for common scenarios
+
+5. **UI Polish**
+
+   - Blueprint-inspired design theme
    - Responsive design with mobile support
    - Dark mode support
    - Empty states with helpful messaging
-   - Loading and error states
+   - Loading skeletons and error boundaries
    - Smooth animations and transitions
 
 ## Installation
@@ -130,9 +147,31 @@ pnpm build
 
 CCO-MCP uses a flexible rule-based configuration system for managing approvals. By default, approval mode is enabled and all requests require manual review. You can customize this behavior by creating rules in the configuration file.
 
+The system supports two types of tool matching:
+- **Built-in tools**: Standard MCP tools like Read, Write, Bash, etc.
+- **MCP server tools**: Tools from external MCP servers (e.g., git, docker, sentry)
+
+Example rule structure:
+```json
+{
+  "id": "allow-reads",
+  "name": "Auto-approve read operations",
+  "priority": 10,
+  "match": {
+    "tool": {
+      "type": "builtin",
+      "toolName": "Read"
+    },
+    "agentIdentity": "claude-code"  // Optional
+  },
+  "action": "approve"
+}
+```
+
 See [Configuration Guide](docs/CONFIGURATION.md) for detailed documentation on:
-- Creating approval rules
-- Pattern matching options
+- Creating approval rules with the new ToolMatch format
+- Configuring built-in vs MCP server tool rules
+- Setting up agent-specific permissions
 - API endpoints for managing configuration
 - Example configurations
 
