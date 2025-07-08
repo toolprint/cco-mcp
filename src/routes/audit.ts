@@ -6,6 +6,7 @@ import {
 } from "../audit/index.js";
 import { validateAuditLogQuery } from "./validation.js";
 import logger from "../logger.js";
+import { getConfigurationService } from "../services/ConfigurationService.js";
 
 // Create a singleton instance of the audit log service
 let auditLogService: IAuditLogService | null = null;
@@ -215,11 +216,10 @@ export function createAuditRoutes(): Router {
    */
   router.get("/audit-log/status", async (req: Request, res: Response) => {
     try {
+      const configService = getConfigurationService();
       const status = {
-        autoApprove: process.env.CCO_AUTO_APPROVE === "true",
-        approvalTimeoutMs: parseInt(
-          process.env.CCO_APPROVAL_TIMEOUT || "300000"
-        ),
+        autoApprove: configService.isAutoApprovalEnabled(),
+        approvalTimeoutMs: configService.getTimeoutMs(),
       };
 
       res.status(200).json(status);

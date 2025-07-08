@@ -16,7 +16,7 @@ export default defineConfig({
     // Copy UI dist files to dist/ui after build
     const uiDistPath = "./ui/dist";
     const targetPath = "./dist/ui";
-    
+
     if (existsSync(uiDistPath)) {
       console.log("Copying UI files to dist/ui...");
       await cp(uiDistPath, targetPath, { recursive: true });

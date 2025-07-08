@@ -1,0 +1,304 @@
+{
+  "example1_basic_read_only": {
+    "description": "Allow read-only operations automatically",
+    "config": {
+      "approvals": {
+        "enabled": true,
+        "rules": [
+          {
+            "id": "allow-read",
+            "name": "Auto-approve Read operations",
+            "description": "Automatically approve file reading operations",
+            "priority": 10,
+            "match": {
+              "tool": {
+                "type": "builtin",
+                "toolName": "Read"
+              }
+            },
+            "action": "approve",
+            "enabled": true
+          },
+          {
+            "id": "allow-ls",
+            "name": "Auto-approve LS operations",
+            "description": "Automatically approve directory listing operations",
+            "priority": 11,
+            "match": {
+              "tool": {
+                "type": "builtin",
+                "toolName": "LS"
+              }
+            },
+            "action": "approve",
+            "enabled": true
+          },
+          {
+            "id": "allow-glob",
+            "name": "Auto-approve Glob operations",
+            "description": "Automatically approve file pattern matching operations",
+            "priority": 12,
+            "match": {
+              "tool": {
+                "type": "builtin",
+                "toolName": "Glob"
+              }
+            },
+            "action": "approve",
+            "enabled": true
+          },
+          {
+            "id": "allow-grep",
+            "name": "Auto-approve Grep operations",
+            "description": "Automatically approve file content search operations",
+            "priority": 13,
+            "match": {
+              "tool": {
+                "type": "builtin",
+                "toolName": "Grep"
+              }
+            },
+            "action": "approve",
+            "enabled": true
+          }
+        ],
+        "defaultAction": "review",
+        "timeout": {
+          "duration": 300000,
+          "defaultAction": "deny"
+        }
+      }
+    }
+  },
+
+  "example2_agent_specific": {
+    "description": "Auto-approve specific agents only",
+    "config": {
+      "approvals": {
+        "enabled": true,
+        "rules": [
+          {
+            "id": "trusted-agent-claude-read",
+            "name": "Auto-approve Claude agent Read operations",
+            "description": "Automatically approve Read requests from Claude agent",
+            "priority": 5,
+            "match": {
+              "tool": {
+                "type": "builtin",
+                "toolName": "Read"
+              },
+              "agentIdentity": "claude-code"
+            },
+            "action": "approve",
+            "enabled": true
+          },
+          {
+            "id": "trusted-agent-claude-write",
+            "name": "Auto-approve Claude agent Write operations",
+            "description": "Automatically approve Write requests from Claude agent",
+            "priority": 6,
+            "match": {
+              "tool": {
+                "type": "builtin",
+                "toolName": "Write"
+              },
+              "agentIdentity": "claude-code"
+            },
+            "action": "approve",
+            "enabled": true
+          }
+        ],
+        "defaultAction": "review",
+        "timeout": {
+          "duration": 300000,
+          "defaultAction": "deny"
+        }
+      }
+    }
+  },
+
+  "example3_mcp_server_rules": {
+    "description": "Rules for MCP server tools",
+    "config": {
+      "approvals": {
+        "enabled": true,
+        "rules": [
+          {
+            "id": "allow-git-status",
+            "name": "Auto-approve git status",
+            "description": "Allow checking git repository status",
+            "priority": 20,
+            "match": {
+              "tool": {
+                "type": "mcp",
+                "serverName": "git",
+                "toolName": "git_status"
+              }
+            },
+            "action": "approve",
+            "enabled": true
+          },
+          {
+            "id": "allow-sentry-read",
+            "name": "Auto-approve Sentry read operations",
+            "description": "Allow all Sentry read/find operations",
+            "priority": 21,
+            "match": {
+              "tool": {
+                "type": "mcp",
+                "serverName": "sentry",
+                "toolName": "find_issues"
+              }
+            },
+            "action": "approve",
+            "enabled": true
+          },
+          {
+            "id": "deny-sentry-write",
+            "name": "Deny Sentry write operations",
+            "description": "Block Sentry update operations",
+            "priority": 1,
+            "match": {
+              "tool": {
+                "type": "mcp",
+                "serverName": "sentry",
+                "toolName": "update_issue"
+              }
+            },
+            "action": "deny",
+            "enabled": true
+          }
+        ],
+        "defaultAction": "review",
+        "timeout": {
+          "duration": 300000,
+          "defaultAction": "deny"
+        }
+      }
+    }
+  },
+
+  "example4_mixed_tool_rules": {
+    "description": "Mix of built-in and MCP tool rules",
+    "config": {
+      "approvals": {
+        "enabled": true,
+        "rules": [
+          {
+            "id": "allow-all-reads",
+            "name": "Auto-approve all read operations",
+            "description": "Allow reading files",
+            "priority": 30,
+            "match": {
+              "tool": {
+                "type": "builtin",
+                "toolName": "Read"
+              }
+            },
+            "action": "approve",
+            "enabled": true
+          },
+          {
+            "id": "allow-safe-bash",
+            "name": "Auto-approve safe bash commands",
+            "description": "Allow specific bash commands with parameters",
+            "priority": 40,
+            "match": {
+              "tool": {
+                "type": "builtin",
+                "toolName": "Bash"
+              },
+              "inputParameters": {
+                "command": "ls -la"
+              }
+            },
+            "action": "approve",
+            "enabled": true
+          },
+          {
+            "id": "allow-all-docker",
+            "name": "Auto-approve all Docker operations",
+            "description": "Trust all Docker MCP server operations",
+            "priority": 50,
+            "match": {
+              "tool": {
+                "type": "mcp",
+                "serverName": "docker"
+              }
+            },
+            "action": "approve",
+            "enabled": true
+          },
+          {
+            "id": "deny-dangerous-bash",
+            "name": "Block dangerous bash commands",
+            "description": "Prevent rm -rf commands",
+            "priority": 1,
+            "match": {
+              "tool": {
+                "type": "builtin",
+                "toolName": "Bash"
+              },
+              "inputParameters": {
+                "command": "rm -rf /"
+              }
+            },
+            "action": "deny",
+            "enabled": true
+          }
+        ],
+        "defaultAction": "review",
+        "timeout": {
+          "duration": 300000,
+          "defaultAction": "deny"
+        }
+      }
+    }
+  },
+
+  "example5_development_environment": {
+    "description": "Permissive rules for development environment",
+    "config": {
+      "approvals": {
+        "enabled": true,
+        "rules": [
+          {
+            "id": "allow-dev-agent-all",
+            "name": "Allow all operations from development agent",
+            "description": "Trust the development agent completely",
+            "priority": 1,
+            "match": {
+              "tool": {
+                "type": "builtin",
+                "toolName": "Read"
+              },
+              "agentIdentity": "dev-agent"
+            },
+            "action": "approve",
+            "timeoutOverride": 60000,
+            "enabled": true
+          },
+          {
+            "id": "allow-localhost-tools",
+            "name": "Auto-approve localhost MCP tools",
+            "description": "Trust all local development MCP servers",
+            "priority": 10,
+            "match": {
+              "tool": {
+                "type": "mcp",
+                "serverName": "localhost"
+              }
+            },
+            "action": "approve",
+            "enabled": true
+          }
+        ],
+        "defaultAction": "approve",
+        "timeout": {
+          "duration": 60000,
+          "defaultAction": "approve"
+        }
+      }
+    }
+  }
+}

@@ -9,6 +9,7 @@ interface AuditLogListProps {
   error?: string | null;
   onApprove?: (id: string) => void;
   onDeny?: (id: string) => void;
+  onCreateRule?: (entry: AuditLogEntryType) => void;
 }
 
 export const AuditLogList: React.FC<AuditLogListProps> = ({
@@ -17,6 +18,7 @@ export const AuditLogList: React.FC<AuditLogListProps> = ({
   error = null,
   onApprove,
   onDeny,
+  onCreateRule,
 }) => {
   if (loading) {
     return (
@@ -54,6 +56,7 @@ export const AuditLogList: React.FC<AuditLogListProps> = ({
           entry={entry}
           onApprove={onApprove}
           onDeny={onDeny}
+          onCreateRule={onCreateRule}
         />
       ))}
     </div>

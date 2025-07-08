@@ -21,10 +21,10 @@ const icons = {
 };
 
 const styles = {
-  success: "border-status-success/20 bg-status-success/10",
-  error: "border-status-danger/20 bg-status-danger/10",
-  warning: "border-status-warning/20 bg-status-warning/10",
-  info: "border-blueprint-500/20 bg-blueprint-500/10",
+  success: "border-status-success/30 bg-status-success/20",
+  error: "border-status-danger/30 bg-status-danger/20",
+  warning: "border-status-warning/30 bg-status-warning/20",
+  info: "border-blueprint-500/30 bg-blueprint-500/20",
 };
 
 const iconStyles = {
@@ -66,12 +66,12 @@ export const Toast: React.FC<ToastProps> = ({
           >
             <Icon className="h-4 w-4" />
           </div>
-          <p className="flex-1 text-sm font-medium text-foreground">
+          <p className="flex-1 text-sm font-medium text-gray-900 dark:text-white">
             {message}
           </p>
           <button
             onClick={() => onClose(id)}
-            className="flex-shrink-0 ml-2 text-muted-foreground hover:text-foreground transition-colors"
+            className="flex-shrink-0 ml-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
             aria-label="Close notification"
           >
             <X className="h-4 w-4" />
@@ -87,7 +87,7 @@ export const Toast: React.FC<ToastProps> = ({
               width: "100%",
               animation: `shrink ${duration}ms linear forwards`,
               background: "currentColor",
-              opacity: 0.3,
+              opacity: 0.6,
             }}
           />
         </div>

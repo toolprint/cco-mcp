@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import type { AuditLogEntry } from "../types/audit";
 
 export interface SSEEvent {
@@ -27,6 +27,7 @@ export function useSSE({
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
+  const [isConnected, setIsConnected] = useState(false);
 
   const connect = useCallback(() => {
     // Clean up existing connection
@@ -45,9 +46,16 @@ export function useSSE({
     const eventSource = new EventSource(url);
     eventSourceRef.current = eventSource;
 
+    eventSource.onopen = () => {
+      console.log("SSE connection opened");
+      setIsConnected(true);
+      reconnectAttemptsRef.current = 0;
+    };
+
     eventSource.addEventListener("connected", () => {
       console.log("SSE connected");
       reconnectAttemptsRef.current = 0;
+      setIsConnected(true);
     });
 
     eventSource.addEventListener("new-entry", (event) => {
@@ -87,6 +95,7 @@ export function useSSE({
 
     eventSource.onerror = () => {
       console.error("SSE connection error");
+      setIsConnected(false);
       eventSource.close();
       eventSourceRef.current = null;
 
@@ -123,6 +132,7 @@ export function useSSE({
       reconnectTimeoutRef.current = null;
     }
     reconnectAttemptsRef.current = 0;
+    setIsConnected(false);
   }, []);
 
   useEffect(() => {
@@ -131,7 +141,7 @@ export function useSSE({
   }, [connect, disconnect]);
 
   return {
-    isConnected: eventSourceRef.current?.readyState === EventSource.OPEN,
+    isConnected,
     reconnect: connect,
     disconnect,
   };

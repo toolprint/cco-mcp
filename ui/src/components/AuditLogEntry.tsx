@@ -10,6 +10,7 @@ import {
   Terminal,
   Server,
   UserCircle,
+  Shield,
 } from "lucide-react";
 import type { AuditLogEntry as AuditLogEntryType } from "../types/audit";
 import { Card, CardContent } from "./ui/card";
@@ -23,12 +24,14 @@ interface AuditLogEntryProps {
   entry: AuditLogEntryType;
   onApprove?: (id: string) => void;
   onDeny?: (id: string) => void;
+  onCreateRule?: (entry: AuditLogEntryType) => void;
 }
 
 export const AuditLogEntry: React.FC<AuditLogEntryProps> = ({
   entry,
   onApprove,
   onDeny,
+  onCreateRule,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const timestamp = new Date(entry.timestamp).toLocaleString();
@@ -178,7 +181,7 @@ export const AuditLogEntry: React.FC<AuditLogEntryProps> = ({
               </div>
             </div>
 
-            {/* Right side - Status badge and expand button */}
+            {/* Right side - Status badge and buttons */}
             <div className="flex flex-col items-end gap-3">
               <div className="flex items-start gap-2">
                 <Badge variant={state.variant} className="text-xs">
@@ -194,27 +197,48 @@ export const AuditLogEntry: React.FC<AuditLogEntryProps> = ({
                 )}
               </div>
 
-              {/* Expand/Collapse Button */}
-              <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className={cn(
-                  "flex items-center gap-2 py-1.5 px-3 rounded-md text-sm font-medium transition-colors",
-                  "bg-blueprint-50 hover:bg-blueprint-100 text-blueprint-700",
-                  "dark:bg-blueprint-900/20 dark:hover:bg-blueprint-900/30 dark:text-blueprint-400"
-                )}
-              >
-                {isExpanded ? (
-                  <>
-                    <ChevronDown className="h-4 w-4" />
-                    Hide Details
-                  </>
-                ) : (
-                  <>
-                    <ChevronRight className="h-4 w-4" />
-                    View Details
-                  </>
-                )}
-              </button>
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2">
+                {/* Create Rule Button (for completed requests) */}
+                {(entry.state === "APPROVED" || entry.state === "DENIED") &&
+                  onCreateRule && (
+                    <Button
+                      onClick={() => onCreateRule(entry)}
+                      size="sm"
+                      variant="outline"
+                      className={cn(
+                        "gap-1.5 py-1.5 px-2.5 text-xs",
+                        "border-blueprint-500 text-blueprint-600 hover:bg-blueprint-50",
+                        "dark:border-blueprint-400 dark:text-blueprint-400 dark:hover:bg-blueprint-900/20"
+                      )}
+                    >
+                      <Shield className="h-3 w-3" />
+                      Create Rule
+                    </Button>
+                  )}
+
+                {/* Expand/Collapse Button */}
+                <button
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  className={cn(
+                    "flex items-center gap-2 py-1.5 px-3 rounded-md text-sm font-medium transition-colors",
+                    "bg-blueprint-50 hover:bg-blueprint-100 text-blueprint-700",
+                    "dark:bg-blueprint-900/20 dark:hover:bg-blueprint-900/30 dark:text-blueprint-400"
+                  )}
+                >
+                  {isExpanded ? (
+                    <>
+                      <ChevronDown className="h-4 w-4" />
+                      Hide Details
+                    </>
+                  ) : (
+                    <>
+                      <ChevronRight className="h-4 w-4" />
+                      View Details
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

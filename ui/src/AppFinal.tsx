@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import { RefreshCw, Filter, BarChart3, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { RefreshCw, Filter, BarChart3, X, Settings } from "lucide-react";
 import { AuditLogList } from "./components/AuditLogList";
 import { StatusFilter } from "./components/StatusFilter";
 import { SearchBar } from "./components/SearchBar";
@@ -8,9 +9,13 @@ import { Pagination } from "./components/Pagination";
 import { ToastContainer } from "./components/Toast";
 import { EmptyState } from "./components/EmptyState";
 import { Statistics } from "./components/Statistics";
+import { RuleModal } from "./components/config/RuleModal";
 import { useAuditLogWithSSE } from "./hooks/useAuditLogWithSSE";
 import { useToast } from "./hooks/useToast";
-import type { AuditLogState } from "./types/audit";
+import { useConfiguration } from "./hooks/useConfiguration";
+import { useConfigurationRules } from "./hooks/useConfigurationRules";
+import type { AuditLogState, AuditLogEntry } from "./types/audit";
+import type { ApprovalRule } from "./types/config";
 import { Header } from "./components/layout/header";
 import { Footer } from "./components/layout/footer";
 import { Button } from "./components/ui/button";
@@ -30,8 +35,15 @@ function AppFinal() {
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
   const [showStats, setShowStats] = useState(true);
+  const [showCreateRuleModal, setShowCreateRuleModal] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState<AuditLogEntry | null>(
+    null
+  );
 
+  const navigate = useNavigate();
   const { toasts, removeToast, info, success, error: showError } = useToast();
+  const { config } = useConfiguration();
+  const rulesApi = useConfigurationRules();
   const entriesRef = useRef<Set<string>>(new Set());
 
   const {
@@ -41,7 +53,6 @@ function AppFinal() {
     refetch,
     approve,
     deny,
-    isConnected,
   } = useAuditLogWithSSE({
     state: selectedState === "ALL" ? undefined : selectedState,
     agent_identity: selectedAgent === "ALL" ? undefined : selectedAgent,
@@ -91,7 +102,7 @@ function AppFinal() {
       try {
         await approve(id);
         success("Entry approved successfully");
-      } catch (error) {
+      } catch {
         showError("Failed to approve entry");
       }
     },
@@ -103,7 +114,7 @@ function AppFinal() {
       try {
         await deny(id);
         success("Entry denied successfully");
-      } catch (error) {
+      } catch {
         showError("Failed to deny entry");
       }
     },
@@ -115,6 +126,26 @@ function AppFinal() {
     setSelectedAgent("ALL");
     setSearchQuery("");
   }, []);
+
+  const handleCreateRule = useCallback((entry: AuditLogEntry) => {
+    setSelectedEntry(entry);
+    setShowCreateRuleModal(true);
+  }, []);
+
+  const handleSaveRule = useCallback(
+    async (rule: ApprovalRule) => {
+      const result = await rulesApi.createRule(rule);
+
+      if (result.success) {
+        success("Rule created successfully");
+        setShowCreateRuleModal(false);
+        setSelectedEntry(null);
+      } else {
+        showError(result.error || "Failed to create rule");
+      }
+    },
+    [rulesApi, success, showError]
+  );
 
   useEffect(() => {
     // Check API health
@@ -128,7 +159,7 @@ function AppFinal() {
       {/* Blueprint grid background pattern */}
       <div className="fixed inset-0 blueprint-grid opacity-10 pointer-events-none" />
 
-      <Header isConnected={isConnected} isHealthy={isHealthy} />
+      <Header isHealthy={isHealthy} />
 
       <main className="flex-1 mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 w-full">
         {/* Action Bar */}
@@ -168,20 +199,31 @@ function AppFinal() {
               )}
             </Button>
           </div>
-          <Button
-            onClick={refetch}
-            variant="blueprint-outline"
-            size="sm"
-            disabled={loading}
-            className="gap-2"
-          >
-            <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => navigate("/config")}
+              variant="blueprint-outline"
+              size="sm"
+              className="gap-2"
+            >
+              <Settings className="h-4 w-4" />
+              Configuration
+            </Button>
+            <Button
+              onClick={refetch}
+              variant="blueprint-outline"
+              size="sm"
+              disabled={loading}
+              className="gap-2"
+            >
+              <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {/* Statistics */}
-        {showStats && allEntries.length > 0 && (
+        {showStats && (
           <div className="mb-6 animate-fade-in">
             <Statistics entries={allEntries} />
           </div>
@@ -254,6 +296,7 @@ function AppFinal() {
                   entries={paginatedEntries}
                   onApprove={handleApprove}
                   onDeny={handleDeny}
+                  onCreateRule={handleCreateRule}
                 />
 
                 {totalPages > 1 && (
@@ -273,6 +316,27 @@ function AppFinal() {
 
       <Footer />
       <ToastContainer toasts={toasts} removeToast={removeToast} />
+
+      {/* Create Rule Modal */}
+      {showCreateRuleModal && selectedEntry && config && (
+        <RuleModal
+          isOpen={showCreateRuleModal}
+          onClose={() => {
+            setShowCreateRuleModal(false);
+            setSelectedEntry(null);
+          }}
+          onSave={handleSaveRule}
+          existingPriorities={config.approvals.rules.map((r) => r.priority)}
+          prePopulatedData={{
+            toolName: selectedEntry.tool_name,
+            agentIdentity: selectedEntry.agent_identity,
+            action:
+              selectedEntry.state === "APPROVED"
+                ? "approve"
+                : ("deny" as const),
+          }}
+        />
+      )}
     </div>
   );
 }

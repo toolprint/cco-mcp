@@ -12,9 +12,7 @@ export const AgentFilter: React.FC<AgentFilterProps> = ({
   selectedAgent,
   onAgentChange,
 }) => {
-  if (agents.length === 0) {
-    return null;
-  }
+  // Always show the component to maintain consistent layout
 
   return (
     <div className="space-y-2">
@@ -24,9 +22,13 @@ export const AgentFilter: React.FC<AgentFilterProps> = ({
       <Select
         value={selectedAgent}
         onChange={(e) => onAgentChange(e.target.value as string | "ALL")}
-        className="w-full"
+        className="w-full opacity-50 cursor-not-allowed"
+        disabled
+        title="Agent filtering temporarily disabled"
       >
-        <option value="ALL">All Agents</option>
+        <option key="ALL" value="ALL">
+          All Agents
+        </option>
         {agents.map((agent) => (
           <option key={agent} value={agent}>
             {agent}
