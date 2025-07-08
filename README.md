@@ -1,240 +1,92 @@
-# CCO-MCP (Claude Code Oversight - Model Context Protocol)
+# CCO-MCP (Claude Code Oversight)
 
-A comprehensive audit and approval system for Claude Code tool calls, featuring a real-time web dashboard for monitoring and managing AI agent tool usage.
+Real-time audit and approval system for Claude Code tool calls. Get instant visibility and control over AI agent actions with a sleek web dashboard.
+
+![CCO-MCP Dashboard](docs/Demo-Screenshot.png)
 
 ## Overview
 
-CCO-MCP provides a secure approval layer for AI tool calls with:
+CCO-MCP provides a security layer between Claude Code and your system, enabling you to monitor and control AI tool calls in real-time. It acts as a firewall for AI actions, allowing you to review sensitive operations before they execute while auto-approving safe ones based on configurable rules.  This let's you scale to many more non-interactive Claude Code instances running in the background without incurring "tab-switching fatigue".
 
-- **In-memory audit logging** with configurable TTL and LRU eviction
-- **RESTful API** for audit log access and approval/denial actions
-- **Real-time updates** via Server-Sent Events (SSE)
-- **Web dashboard** for monitoring and managing tool approvals
-- **MCP integration** for seamless Claude Code integration
+## Get Started
 
-## Architecture
-
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Claude Code   │────▶│   MCP Server    │────▶│  Audit Service  │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-                               │                          │
-                               ▼                          ▼
-                        ┌─────────────────┐     ┌─────────────────┐
-                        │   REST API      │────▶│   Web Dashboard │
-                        └─────────────────┘     └─────────────────┘
-                               │
-                               ▼
-                        ┌─────────────────┐
-                        │   SSE Stream    │
-                        └─────────────────┘
-```
-
-## Features
-
-### Backend (Node.js/TypeScript)
-
-1. **In-Memory Audit Log Service**
-
-   - LRU cache with configurable max entries (default: 1000)
-   - Configurable TTL for entries (default: 24 hours)
-   - Auto-deny timeout for unapproved requests (default: 5 minutes)
-   - Event-driven architecture with EventEmitter
-
-2. **REST API Endpoints**
-
-   - `GET /api/audit-log` - Query audit log entries with filtering
-   - `GET /api/audit-log/:id` - Get specific entry details
-   - `POST /api/audit-log/:id/approve` - Approve a tool request
-   - `POST /api/audit-log/:id/deny` - Deny a tool request
-   - `GET /api/audit-log/stream` - SSE endpoint for real-time updates
-   - `GET /api/config` - Get current configuration
-   - `PATCH /api/config` - Update configuration settings
-   - `GET /api/config/rules` - List all approval rules
-   - `POST /api/config/rules` - Add new approval rule
-   - `PUT /api/config/rules/:id` - Update existing rule
-   - `DELETE /api/config/rules/:id` - Delete rule
-
-3. **MCP Integration**
-   - `approval_prompt` tool that integrates with the audit log
-   - Polling mechanism to wait for approval/denial
-   - Rule-based auto-approval system with priority ordering
-
-### Frontend (React/TypeScript/Vite)
-
-1. **Real-Time Dashboard**
-
-   - Live updates via SSE integration
-   - Visual indicators for connection status
-   - Toast notifications for important events
-   - Auto-refresh of pending approvals
-
-2. **Filtering & Search**
-
-   - Filter by approval state (Approved/Denied/Needs Review)
-   - Filter by agent identity
-   - Search across tool names and input parameters
-   - Pagination with 10 items per page
-
-3. **Interactive Controls**
-
-   - One-click approve/deny actions
-   - Create rules from audit log entries
-   - Navigate to configuration page
-   - Statistics overview with charts
-
-4. **Configuration Management**
-
-   - Visual rule editor with drag-and-drop priority management
-   - Built-in and MCP tool type selection
-   - Live rule testing and validation
-   - Import/export configuration support
-   - Rule templates for common scenarios
-
-5. **UI Polish**
-
-   - Blueprint-inspired design theme
-   - Responsive design with mobile support
-   - Dark mode support
-   - Empty states with helpful messaging
-   - Loading skeletons and error boundaries
-   - Smooth animations and transitions
-
-## Installation
-
-### Prerequisites
-
-- Node.js 18+
-- pnpm (recommended) or npm
-
-### Backend Setup
+### Clone and run with Docker Compose
 
 ```bash
-# Install dependencies
-pnpm install
-
-# Build the project
-pnpm build
-
-# Start the server
-pnpm start
+git clone https://github.com/onegrep/cco-mcp.git
+cd cco-mcp
+docker-compose up
 ```
 
-### Frontend Setup
+### Configure Claude Code
+
+Install CCO-MCP at the user scope:
 
 ```bash
-# Navigate to UI directory
-cd ui
-
-# Install dependencies
-pnpm install
-
-# Start development server
-pnpm dev
-
-# Build for production
-pnpm build
+claude mcp add -s user -t http cco-mcp http://localhost:8660/mcp
 ```
 
-## Configuration
-
-### Environment Variables
-
-- `PORT` - Server port (default: 8660)
-- `CCO_CONFIG_PATH` - Path to configuration file (default: ~/.cco-mcp/config.json)
-
-### Approval Configuration
-
-CCO-MCP uses a flexible rule-based configuration system for managing approvals. By default, approval mode is enabled and all requests require manual review. You can customize this behavior by creating rules in the configuration file.
-
-The system supports two types of tool matching:
-
-- **Built-in tools**: Standard MCP tools like Read, Write, Bash, etc.
-- **MCP server tools**: Tools from external MCP servers (e.g., git, docker, sentry)
-
-Example rule structure:
-
-```json
-{
-  "id": "allow-reads",
-  "name": "Auto-approve read operations",
-  "priority": 10,
-  "match": {
-    "tool": {
-      "type": "builtin",
-      "toolName": "Read"
-    },
-    "agentIdentity": "claude-code" // Optional
-  },
-  "action": "approve"
-}
-```
-
-See [Configuration Guide](docs/CONFIGURATION.md) for detailed documentation on:
-
-- Creating approval rules with the new ToolMatch format
-- Configuring built-in vs MCP server tool rules
-- Setting up agent-specific permissions
-- API endpoints for managing configuration
-- Example configurations
-
-### MCP Configuration
-
-Add to your Claude Desktop config:
+This will add the following to your Claude Code config:
 
 ```json
 {
   "mcpServers": {
     "cco-mcp": {
-      "command": "node",
-      "args": ["/path/to/cco-mcp/dist/index.js"],
-      "env": {
-        "CCO_CONFIG_PATH": "/path/to/config.json"
-      }
+      "type": "http",
+      "url": "http://localhost:8660/mcp"
     }
   }
 }
 ```
 
-## Usage
+For self-hosted deployments, replace `http://localhost:8660/mcp` with your deployment URL.
 
-1. **Start the backend server:**
+Visit http://localhost:8660 to access the dashboard.
 
-   ```bash
-   pnpm start
-   ```
+### Enable Approval Prompts
 
-2. **Start the UI development server:**
+To use CCO-MCP for approval prompts, run Claude Code in non-interactive mode with the appropriate [Permission Prompt Tool](https://docs.anthropic.com/en/docs/claude-code/sdk#custom-permission-prompt-tool) flag:
 
-   ```bash
-   cd ui && pnpm dev
-   ```
+```bash
+claude code -p "your prompt here" --permission-prompt-tool mcp__cco-mcp__approval_prompt
+```
 
-3. **Access the dashboard:**
-   Open http://localhost:5173 in your browser
+This enables Claude to request approval through CCO-MCP before executing sensitive operations without using the "dangerously skip permissions" option.
 
-4. **Configure Claude Code:**
-   Add the MCP server to your Claude Desktop configuration
+## Main Features
 
-## API Documentation
+### 🛡️ Smart Approval Rules
+Create rules to auto-approve safe operations (like file reads) while requiring manual approval for sensitive ones (like running bash commands).
 
-### Query Parameters
+### 📊 Real-Time Dashboard
+Monitor all tool calls as they happen with live updates via Server-Sent Events.
 
-All list endpoints support:
+### 🔍 Detailed Audit Logs
+Every tool call is logged with full context including agent identity, parameters, and approval status.
 
-- `state` - Filter by state (APPROVED, DENIED, NEEDS_REVIEW)
-- `agent_identity` - Filter by agent identity
-- `search` - Search in tool names and inputs
-- `offset` - Pagination offset (default: 0)
-- `limit` - Results per page (default: 100, max: 1000)
+## Configuration Options
 
-### SSE Event Types
+All configuration can be managed through the web interface at http://localhost:8660/config.
 
-- `connected` - Initial connection established
-- `new-entry` - New audit log entry created
-- `state-change` - Entry state changed (approved/denied)
-- `entry-expired` - Entry expired due to TTL
-- `heartbeat` - Keep-alive signal
+### Default Action and Timeouts
+
+- **Default Action**: Choose whether unmatched requests are automatically approved or require manual review
+- **Auto-Deny Timeout**: Set how long to wait for manual approval before automatically denying (default: 5 minutes)
+- **Entry TTL**: Configure how long audit log entries are retained (default: 24 hours)
+
+### Approval Rules
+
+Rules use a priority system (lower numbers = higher priority) to determine actions:
+
+- **Tool Matching**: Match specific tools (built-in like Read/Write or MCP server tools)
+- **Agent Matching**: Create rules for specific agent identities
+- **Pattern Matching**: Use wildcards for flexible rule creation
+- **Actions**: Set rules to auto-approve or auto-deny matching requests
+
+### Environment Variables
+
+- `PORT` - Server port (default: 8660)
+- `CCO_CONFIG_PATH` - Config file location (default: ~/.cco-mcp/config.json)
 
 ## Development
 
@@ -242,44 +94,54 @@ All list endpoints support:
 
 ```
 cco-mcp/
-├── src/
-│   ├── audit/          # Audit log service implementation
-│   ├── routes/         # Express route handlers
-│   ├── server.ts       # MCP server implementation
-│   ├── app.ts          # Express app setup
-│   └── index.ts        # Entry point
-├── ui/
-│   ├── src/
-│   │   ├── components/ # React components
-│   │   ├── hooks/      # Custom React hooks
-│   │   └── types/      # TypeScript type definitions
-│   └── dist/           # Production build
-└── dist/               # Backend build output
+├── src/              # TypeScript backend
+│   ├── audit/        # Core audit service
+│   ├── routes/       # REST API endpoints
+│   └── server.ts     # MCP server
+├── ui/               # React frontend
+│   └── src/
+│       ├── components/
+│       └── pages/
+└── dist/             # Build output
 ```
 
-### Key Design Decisions
+### Design Principles
 
-1. **In-Memory Storage**: Chosen for simplicity and performance. The audit log is ephemeral by design.
+- **Simplicity first** - Enabling core use-case of approving background agents
+- **Real-time by default** - SSE for instant updates
+- **Type safety** - Full TypeScript coverage
+- **User-friendly** - Intuitive UI with helpful defaults
 
-2. **SSE over WebSockets**: Server-Sent Events provide simpler implementation for one-way real-time updates.
+### Local Development
 
-3. **Polling for Approval**: The MCP tool polls for approval status to maintain stateless HTTP connections.
+```bash
+# Install required tools
+just brew
 
-4. **TypeScript**: Full type safety across backend and frontend for better developer experience.
+# Setup project dependencies
+just setup
 
-5. **Tailwind CSS**: Utility-first CSS for rapid UI development with consistent styling.
+# Run both backend and UI
+just dev-all
+
+# Run tests
+just test
+
+# Format code
+just format
+
+# Build everything
+just build-all
+```
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes with appropriate tests
-4. Submit a pull request
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
 ## License
 
-MIT License - see LICENSE file for details
+MIT License - Copyright 2025 OneGrep, Inc.
 
 ## Acknowledgments
 
-Built for use with Claude Code and the Model Context Protocol (MCP) by Anthropic.
+Built for use with [Claude Code](https://claude.ai/code) and the [Model Context Protocol](https://modelcontextprotocol.io) by Anthropic.
