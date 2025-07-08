@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { X, Info } from "lucide-react";
 import { Button } from "../ui/button";
 import { DurationPicker } from "../ui/duration-picker";
+import { priorityUtils } from "../../utils/priority";
 import type { ApprovalRule, ApprovalAction, MatchPatternType } from "../../types/config";
 
 interface RuleModalProps {
@@ -89,7 +90,7 @@ export const RuleModal: React.FC<RuleModalProps> = ({
       });
     } else if (prePopulatedData) {
       // Creating new rule with pre-populated data
-      const nextPriority = Math.max(...existingPriorities, 0) + 10;
+      const nextPriority = priorityUtils.calculateNextPriority(existingPriorities);
       const action = prePopulatedData.action || "review";
       const toolName = prePopulatedData.toolName || "";
       const agentIdentity = prePopulatedData.agentIdentity || "";
@@ -130,7 +131,7 @@ export const RuleModal: React.FC<RuleModalProps> = ({
       }));
     } else {
       // Creating new rule from scratch
-      const nextPriority = Math.max(...existingPriorities, 0) + 10;
+      const nextPriority = priorityUtils.calculateNextPriority(existingPriorities);
       setFormData(prev => ({ ...prev, priority: nextPriority }));
     }
   }, [rule, existingPriorities, prePopulatedData]);

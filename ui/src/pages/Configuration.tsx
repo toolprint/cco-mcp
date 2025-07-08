@@ -187,6 +187,7 @@ export function Configuration() {
             onUpdateRule={handleUpdateRule}
             onDeleteRule={handleDeleteRule}
             onTestRule={rulesApi.testRule}
+            onRebalancePriorities={rulesApi.rebalancePriorities}
           />
         </div>
       </main>

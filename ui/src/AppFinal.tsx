@@ -218,7 +218,7 @@ function AppFinal() {
         </div>
 
         {/* Statistics */}
-        {showStats && allEntries.length > 0 && (
+        {showStats && (
           <div className="mb-6 animate-fade-in">
             <Statistics entries={allEntries} />
           </div>

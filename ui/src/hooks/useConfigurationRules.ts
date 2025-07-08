@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { priorityUtils, validatePriorityUpdate } from "../utils/priority";
 import type { ApprovalRule, RuleTestRequest, RuleTestResponse } from "../types/config";
 
 export function useConfigurationRules() {
@@ -60,6 +61,17 @@ export function useConfigurationRules() {
     setError(null);
     
     try {
+      // If updating priority, validate it doesn't conflict
+      if (rule.priority !== undefined) {
+        const currentRules = await getRules();
+        const validation = validatePriorityUpdate(id, rule.priority, currentRules);
+        
+        if (!validation.isValid && validation.suggestedPriority) {
+          // Use the suggested priority to avoid conflicts
+          rule.priority = validation.suggestedPriority;
+        }
+      }
+
       const response = await fetch(`/api/config/rules/${id}`, {
         method: "PUT",
         headers: {
@@ -131,6 +143,44 @@ export function useConfigurationRules() {
     }
   }, []);
 
+  const rebalancePriorities = useCallback(async (rules: ApprovalRule[]) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const updates = priorityUtils.rebalancePriorities(rules);
+      const results = [];
+      
+      // Apply updates sequentially to avoid conflicts
+      for (const update of updates) {
+        const result = await updateRule(update.id, { priority: update.priority });
+        results.push(result);
+        
+        if (!result.success) {
+          throw new Error(`Failed to update rule ${update.id}: ${result.error}`);
+        }
+      }
+      
+      return { success: true, updates: results };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to rebalance priorities";
+      setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      setLoading(false);
+    }
+  }, [updateRule]);
+
+  const checkAndRebalanceIfNeeded = useCallback(async (rules: ApprovalRule[]) => {
+    const priorities = rules.map(rule => rule.priority);
+    
+    if (priorityUtils.needsRebalancing(priorities)) {
+      return await rebalancePriorities(rules);
+    }
+    
+    return { success: true, rebalanceNeeded: false };
+  }, [rebalancePriorities]);
+
   return {
     loading,
     error,
@@ -139,5 +189,7 @@ export function useConfigurationRules() {
     updateRule,
     deleteRule,
     testRule,
+    rebalancePriorities,
+    checkAndRebalanceIfNeeded,
   };
 }

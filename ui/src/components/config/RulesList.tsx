@@ -4,8 +4,9 @@ import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Toggle } from "../ui/toggle";
 import { ConfirmationModal } from "../ui/confirmation-modal";
-import { Plus, Edit2, Trash2, GripVertical, TestTube, CheckCircle, XCircle } from "lucide-react";
+import { Plus, Edit2, Trash2, GripVertical, TestTube, CheckCircle, XCircle, RotateCcw } from "lucide-react";
 import { RuleModal } from "./RuleModal";
+import { priorityUtils } from "../../utils/priority";
 import { cn } from "../../lib/utils";
 import type { ApprovalRule, RuleTestRequest } from "../../types/config";
 
@@ -15,6 +16,7 @@ interface RulesListProps {
   onUpdateRule: (id: string, rule: Partial<ApprovalRule>) => void;
   onDeleteRule: (id: string) => void;
   onTestRule: (test: RuleTestRequest) => Promise<{ matched: boolean; rule?: ApprovalRule; reason: string }>;
+  onRebalancePriorities?: (rules: ApprovalRule[]) => Promise<{ success: boolean; error?: string }>;
 }
 
 export const RulesList: React.FC<RulesListProps> = ({
@@ -23,6 +25,7 @@ export const RulesList: React.FC<RulesListProps> = ({
   onUpdateRule,
   onDeleteRule,
   onTestRule,
+  onRebalancePriorities,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<ApprovalRule | null>(null);
@@ -35,10 +38,21 @@ export const RulesList: React.FC<RulesListProps> = ({
   const [rulesToDelete, setRulesToDelete] = useState<Set<string>>(new Set());
 
   const sortedRules = [...rules].sort((a, b) => a.priority - b.priority);
+  const priorities = rules.map(rule => rule.priority);
+  const needsRebalancing = priorityUtils.needsRebalancing(priorities);
 
   const handleCreateRule = () => {
     setEditingRule(null);
     setIsModalOpen(true);
+  };
+
+  const handleRebalancePriorities = async () => {
+    if (!onRebalancePriorities) return;
+    
+    const result = await onRebalancePriorities(rules);
+    if (!result.success) {
+      console.error("Failed to rebalance priorities:", result.error);
+    }
   };
 
   const handleEditRule = (rule: ApprovalRule) => {
@@ -269,6 +283,17 @@ export const RulesList: React.FC<RulesListProps> = ({
                 >
                   <Trash2 className="h-4 w-4" />
                   Delete Rules ({selectedRules.size})
+                </Button>
+              )}
+              {needsRebalancing && onRebalancePriorities && (
+                <Button
+                  onClick={handleRebalancePriorities}
+                  variant="outline"
+                  className="gap-2 border-orange-300 text-orange-600 hover:bg-orange-50 hover:text-orange-700 hover:border-orange-400 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-950 dark:hover:text-orange-300 dark:hover:border-orange-600"
+                  title="Priority conflicts detected. Click to rebalance."
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Rebalance Priorities
                 </Button>
               )}
               <Button

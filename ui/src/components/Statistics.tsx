@@ -148,39 +148,37 @@ export const Statistics: React.FC<StatisticsProps> = ({ entries }) => {
       />
 
       {/* Additional insights */}
-      {stats.topTool && (
-        <Card className="col-span-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Most Used Tool
-                </p>
-                <p className="text-lg font-semibold text-slate-800 dark:text-white">
-                  {stats.topTool.name}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Requests
-                </p>
-                <p className="text-2xl font-bold text-blueprint-600 dark:text-blueprint-400">
-                  {stats.topTool.count}
-                </p>
-              </div>
+      <Card className="col-span-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Most Used Tool
+              </p>
+              <p className="text-lg font-semibold text-slate-800 dark:text-white">
+                {stats.topTool ? stats.topTool.name : "No data"}
+              </p>
             </div>
-            {/* Progress bar showing relative usage */}
-            <div className="mt-4 h-2 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-blueprint-400 to-blueprint-600 rounded-full transition-all duration-500"
-                style={{
-                  width: `${Math.min((stats.topTool.count / entries.length) * 100, 100)}%`,
-                }}
-              />
+            <div className="text-right">
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Requests
+              </p>
+              <p className="text-2xl font-bold text-blueprint-600 dark:text-blueprint-400">
+                {stats.topTool ? stats.topTool.count : 0}
+              </p>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+          {/* Progress bar showing relative usage */}
+          <div className="mt-4 h-2 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-blueprint-400 to-blueprint-600 rounded-full transition-all duration-500"
+              style={{
+                width: stats.topTool ? `${Math.min((stats.topTool.count / entries.length) * 100, 100)}%` : "0%",
+              }}
+            />
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
