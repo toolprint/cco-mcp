@@ -44,10 +44,14 @@ Each rule has the following structure:
   "description": "Optional description",
   "priority": 10,
   "match": {
-    "toolName": { "type": "exact|wildcard|regex", "value": "..." },
-    "agentIdentity": { "type": "exact|wildcard|regex", "value": "..." },
-    "inputParameters": { "key": "value" },
-    "conditions": [...]
+    "tool": {
+      "type": "builtin" | "mcp",
+      "toolName": "ToolName",        // For builtin tools
+      "serverName": "server-name",   // For MCP tools
+      "optionalSpecifier": "..."     // Optional additional matching
+    },
+    "agentIdentity": "agent-name",   // Optional
+    "inputParameters": { "key": "value" }  // Optional
   },
   "action": "approve|deny|review",
   "timeoutOverride": 60000,
@@ -64,37 +68,36 @@ Each rule has the following structure:
 - **`timeoutOverride`**: Optional custom timeout for this rule
 - **`enabled`**: Whether the rule is active
 
-### Match Patterns
+### Tool Matching
 
-Three types of pattern matching are supported:
+Two types of tool matching are supported:
 
-1. **`exact`**: Case-insensitive exact match
-2. **`wildcard`**: Using `*` (multiple chars) and `?` (single char)
-3. **`regex`**: Regular expression matching
+1. **Built-in Tools**: Standard tools provided by the MCP server
+   ```json
+   {
+     "tool": {
+       "type": "builtin",
+       "toolName": "Read"
+     }
+   }
+   ```
 
-### Advanced Conditions
+2. **MCP Tools**: Tools from external MCP servers
+   ```json
+   {
+     "tool": {
+       "type": "mcp",
+       "serverName": "sentry",
+       "toolName": "find_issues"  // Optional - omit to match all tools from server
+     }
+   }
+   ```
 
-For complex matching, use conditions:
+### Match Criteria
 
-```json
-"conditions": [
-  {
-    "field": "file_path",
-    "operator": "startsWith",
-    "value": "/tmp/",
-    "caseSensitive": false
-  }
-]
-```
-
-Operators:
-- `equals`: Exact match
-- `contains`: Substring match
-- `startsWith`: Prefix match
-- `endsWith`: Suffix match
-- `matches`: Regex match
-- `in`: Value in array
-- `notIn`: Value not in array
+- **`tool`**: Required. Specifies which tool(s) to match
+- **`agentIdentity`**: Optional. Match specific agent identities
+- **`inputParameters`**: Optional. Match specific input parameter values
 
 ## Environment Variables
 
@@ -131,9 +134,21 @@ Operators:
         "name": "Auto-approve read operations",
         "priority": 10,
         "match": {
-          "toolName": {
-            "type": "regex",
-            "value": "^(Read|LS|Glob|Grep)$"
+          "tool": {
+            "type": "builtin",
+            "toolName": "Read"
+          }
+        },
+        "action": "approve"
+      },
+      {
+        "id": "allow-ls",
+        "name": "Auto-approve listing operations",
+        "priority": 11,
+        "match": {
+          "tool": {
+            "type": "builtin",
+            "toolName": "LS"
           }
         },
         "action": "approve"
@@ -156,12 +171,13 @@ Operators:
   "name": "Block dangerous bash commands",
   "priority": 1,
   "match": {
-    "toolName": { "type": "exact", "value": "Bash" },
-    "conditions": [{
-      "field": "command",
-      "operator": "matches",
-      "value": "(rm|dd|mkfs|shutdown)"
-    }]
+    "tool": {
+      "type": "builtin",
+      "toolName": "Bash"
+    },
+    "inputParameters": {
+      "command": "rm -rf /"
+    }
   },
   "action": "deny"
 }
@@ -175,9 +191,45 @@ Operators:
   "name": "Auto-approve trusted agent",
   "priority": 5,
   "match": {
-    "agentIdentity": {
-      "type": "exact",
-      "value": "claude-code"
+    "tool": {
+      "type": "builtin",
+      "toolName": "Read"
+    },
+    "agentIdentity": "claude-code"
+  },
+  "action": "approve"
+}
+```
+
+### 4. MCP Server Rules
+
+```json
+{
+  "id": "allow-sentry-readonly",
+  "name": "Allow Sentry read operations",
+  "priority": 20,
+  "match": {
+    "tool": {
+      "type": "mcp",
+      "serverName": "sentry",
+      "toolName": "find_issues"
+    }
+  },
+  "action": "approve"
+}
+```
+
+### 5. Allow All Tools from Specific MCP Server
+
+```json
+{
+  "id": "trust-git-server",
+  "name": "Auto-approve all git operations",
+  "priority": 15,
+  "match": {
+    "tool": {
+      "type": "mcp",
+      "serverName": "git"
     }
   },
   "action": "approve"
