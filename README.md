@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/toolprint-cco-mcp-badge.png)](https://mseep.ai/app/toolprint-cco-mcp)
+
 # CCO-MCP (Claude Code Oversight)
 
 Real-time audit and approval system for Claude Code tool calls. Get instant visibility and control over AI agent actions with a sleek web dashboard.
