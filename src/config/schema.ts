@@ -122,7 +122,7 @@ export const CCOMCPConfigSchema = z.object({
  */
 export const DEFAULT_TIMEOUT_CONFIG: TimeoutConfig = {
   duration: 300000, // 5 minutes
-  defaultAction: "deny",
+  defaultAction: "approve",
 };
 
 /**

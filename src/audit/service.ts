@@ -18,6 +18,7 @@ import {
   MAX_TTL_MS,
 } from "./constants.js";
 import { LRUCache } from "./lru-cache.js";
+import { ConfigurationService } from "../services/ConfigurationService.js";
 import logger from "../logger.js";
 
 /**
@@ -28,10 +29,11 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
   private storage: LRUCache<string, AuditLogEntry>;
   private config: Required<AuditLogConfig>;
   private cleanupTimer: NodeJS.Timeout | null = null;
-  private autoDenyTimers: Map<string, NodeJS.Timeout> = new Map();
+  private autoResolveTimers: Map<string, NodeJS.Timeout> = new Map();
   private stopped = false;
+  private configService?: ConfigurationService;
 
-  constructor(config?: AuditLogConfig) {
+  constructor(config?: AuditLogConfig, configService?: ConfigurationService) {
     super();
 
     // Validate and set configuration
@@ -41,6 +43,8 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
       autoDenyTimeoutMs:
         config?.autoDenyTimeoutMs ?? DEFAULT_AUTO_DENY_TIMEOUT_MS,
     };
+
+    this.configService = configService;
 
     // Validate TTL
     if (this.config.ttlMs < MIN_TTL_MS || this.config.ttlMs > MAX_TTL_MS) {
@@ -85,11 +89,11 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
         { evictedId: evicted.id },
         "Entry evicted due to capacity limit"
       );
-      this.cancelAutoDenyTimer(evicted.id);
+      this.cancelAutoResolveTimer(evicted.id);
     }
 
-    // Set up auto-deny timer
-    this.setupAutoDenyTimer(entry);
+    // Set up auto-resolve timer
+    this.setupAutoResolveTimer(entry);
 
     // Emit event
     this.emit("new-entry", { type: "new-entry", entry });
@@ -107,7 +111,7 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
     // Check if expired
     if (this.isExpired(entry)) {
       this.storage.delete(id);
-      this.cancelAutoDenyTimer(id);
+      this.cancelAutoResolveTimer(id);
       return null;
     }
 
@@ -145,8 +149,8 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
     // Update in storage
     this.storage.set(id, entry);
 
-    // Cancel auto-deny timer
-    this.cancelAutoDenyTimer(id);
+    // Cancel auto-resolve timer
+    this.cancelAutoResolveTimer(id);
 
     // Emit event
     this.emit("state-change", {
@@ -214,7 +218,7 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
     const validEntries = entries.filter((entry) => {
       if (this.isExpired(entry)) {
         this.storage.delete(entry.id);
-        this.cancelAutoDenyTimer(entry.id);
+        this.cancelAutoResolveTimer(entry.id);
         return false;
       }
       return true;
@@ -226,7 +230,7 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
   async deleteEntry(id: string): Promise<boolean> {
     const deleted = this.storage.delete(id);
     if (deleted) {
-      this.cancelAutoDenyTimer(id);
+      this.cancelAutoResolveTimer(id);
       logger.info({ entryId: id }, "Audit log entry deleted");
     }
     return deleted;
@@ -239,7 +243,7 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
     for (const [id, entry] of entries) {
       if (this.isExpired(entry)) {
         this.storage.delete(id);
-        this.cancelAutoDenyTimer(id);
+        this.cancelAutoResolveTimer(id);
         this.emit("entry-expired", { type: "entry-expired", entry });
         removed++;
       }
@@ -261,11 +265,11 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
       this.cleanupTimer = null;
     }
 
-    // Cancel all auto-deny timers
-    for (const timer of this.autoDenyTimers.values()) {
+    // Cancel all auto-resolve timers
+    for (const timer of this.autoResolveTimers.values()) {
       clearTimeout(timer);
     }
-    this.autoDenyTimers.clear();
+    this.autoResolveTimers.clear();
 
     // Clear storage
     this.storage.clear();
@@ -331,51 +335,65 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
   }
 
   /**
-   * Set up auto-deny timer for an entry
+   * Set up auto-resolve timer for an entry
    */
-  private setupAutoDenyTimer(entry: AuditLogEntry): void {
+  private setupAutoResolveTimer(entry: AuditLogEntry): void {
     if (entry.state !== "NEEDS_REVIEW") {
       return;
     }
 
+    // Use timeout from config service if available, otherwise fall back to default
+    const timeoutMs =
+      this.configService?.getTimeoutMs() ?? this.config.autoDenyTimeoutMs;
+
     const timer = setTimeout(() => {
-      this.autoDenyEntry(entry.id).catch((err) => {
+      this.autoResolveEntry(entry.id).catch((err) => {
         logger.error(
           { error: err, entryId: entry.id },
-          "Error during auto-deny"
+          "Error during auto-resolve"
         );
       });
-    }, this.config.autoDenyTimeoutMs);
+    }, timeoutMs);
 
-    this.autoDenyTimers.set(entry.id, timer);
+    this.autoResolveTimers.set(entry.id, timer);
   }
 
   /**
-   * Cancel auto-deny timer for an entry
+   * Cancel auto-resolve timer for an entry
    */
-  private cancelAutoDenyTimer(id: string): void {
-    const timer = this.autoDenyTimers.get(id);
+  private cancelAutoResolveTimer(id: string): void {
+    const timer = this.autoResolveTimers.get(id);
     if (timer) {
       clearTimeout(timer);
-      this.autoDenyTimers.delete(id);
+      this.autoResolveTimers.delete(id);
     }
   }
 
   /**
-   * Auto-deny an entry due to timeout
+   * Auto-resolve an entry due to timeout (approve or deny based on configuration)
    */
-  private async autoDenyEntry(id: string): Promise<void> {
+  private async autoResolveEntry(id: string): Promise<void> {
     const entry = await this.getEntry(id);
     if (!entry || entry.state !== "NEEDS_REVIEW") {
       return;
     }
 
-    entry.state = "DENIED";
-    entry.denied_by_timeout = true;
+    // Get timeout action from config service, default to deny for safety
+    const timeoutAction = this.configService?.getTimeoutAction() ?? "deny";
+
+    // Set the new state based on timeout action
+    entry.state = timeoutAction === "approve" ? "APPROVED" : "DENIED";
     entry.decision_time = new Date();
 
+    // Set timeout flags based on action
+    if (timeoutAction === "approve") {
+      entry.approved_by_timeout = true;
+    } else {
+      entry.denied_by_timeout = true;
+    }
+
     this.storage.set(id, entry);
-    this.autoDenyTimers.delete(id);
+    this.autoResolveTimers.delete(id);
 
     this.emit("state-change", {
       type: "state-change",
@@ -383,7 +401,10 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
       previousState: "NEEDS_REVIEW",
     });
 
-    logger.info({ entryId: id }, "Entry auto-denied due to timeout");
+    logger.info(
+      { entryId: id, action: timeoutAction },
+      `Entry auto-${timeoutAction}d due to timeout`
+    );
   }
 }
 
@@ -391,7 +412,8 @@ export class AuditLogService extends EventEmitter implements IAuditLogService {
  * Factory function to create an audit log service instance
  */
 export function createAuditLogService(
-  config?: AuditLogConfig
+  config?: AuditLogConfig,
+  configService?: ConfigurationService
 ): IAuditLogService {
-  return new AuditLogService(config);
+  return new AuditLogService(config, configService);
 }

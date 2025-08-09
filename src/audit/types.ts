@@ -34,6 +34,9 @@ export interface AuditLogEntry {
   /** Whether the request was denied due to timeout */
   denied_by_timeout?: boolean;
 
+  /** Whether the request was approved due to timeout */
+  approved_by_timeout?: boolean;
+
   /** Expiration time for the entry (for TTL) */
   expires_at: Date;
 }

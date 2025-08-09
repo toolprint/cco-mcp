@@ -16,7 +16,8 @@ let auditLogService: IAuditLogService | null = null;
  */
 export function getAuditLogService(): IAuditLogService {
   if (!auditLogService) {
-    auditLogService = createAuditLogService();
+    const configService = getConfigurationService();
+    auditLogService = createAuditLogService(undefined, configService);
     logger.info("Audit log service initialized");
   }
   return auditLogService;
