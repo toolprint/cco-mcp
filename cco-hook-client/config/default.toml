@@ -1,0 +1,55 @@
+# CCO Hook Client Default Configuration
+# This file contains the default configuration for the CCO Hook Client.
+# Copy this file to ~/.config/cco-hook-client/config.toml or ./cco-hook-client.toml
+# and customize the settings as needed.
+
+[server]
+# CCO-MCP server host
+host = "localhost"
+
+# CCO-MCP server port
+port = 8660
+
+# Protocol (http or https)
+protocol = "http"
+
+# Request timeout in milliseconds
+timeout_ms = 10000
+
+# Base path for API endpoints
+base_path = "/api/hooks"
+
+[client]
+# Maximum number of retry attempts for failed requests
+max_retries = 3
+
+# Initial backoff delay in milliseconds for retries
+initial_backoff_ms = 100
+
+# Maximum backoff delay in milliseconds for retries
+max_backoff_ms = 5000
+
+# Connection timeout in milliseconds
+connection_timeout_ms = 5000
+
+# Enable HTTP keep-alive connections
+keep_alive = true
+
+# Maximum number of idle connections per host
+pool_max_idle_per_host = 10
+
+[logging]
+# Log level (trace, debug, info, warn, error)
+level = "info"
+
+# Log format (pretty, json, compact)
+format = "pretty"
+
+# Optional log file path (uncomment to enable file logging)
+# file_path = "/var/log/cco-hook-client.log"
+
+# Maximum log file size in MB (only used if file_path is set)
+max_file_size_mb = 10
+
+# Maximum number of log files to keep (only used if file_path is set)
+max_files = 5

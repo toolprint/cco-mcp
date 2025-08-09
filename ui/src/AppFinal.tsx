@@ -17,6 +17,7 @@ import { useConfigurationRules } from "./hooks/useConfigurationRules";
 import type { AuditLogState, AuditLogEntry } from "./types/audit";
 import type { ApprovalRule } from "./types/config";
 import { Header } from "./components/layout/header";
+import { Navigation } from "./components/layout/navigation";
 import { Footer } from "./components/layout/footer";
 import { Button } from "./components/ui/button";
 import { Card, CardContent } from "./components/ui/card";
@@ -160,6 +161,7 @@ function AppFinal() {
       <div className="fixed inset-0 blueprint-grid opacity-10 pointer-events-none" />
 
       <Header isHealthy={isHealthy} />
+      <Navigation />
 
       <main className="flex-1 mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 w-full">
         {/* Action Bar */}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Header } from "../components/layout/header";
+import { Navigation } from "../components/layout/navigation";
 import { ApprovalSettings } from "../components/config/ApprovalSettings";
 import { RulesList } from "../components/config/RulesList";
 import { RuleModal } from "../components/config/RuleModal";
@@ -127,6 +128,7 @@ export function Configuration() {
     return (
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
         <Header isHealthy={isHealthy} />
+        <Navigation />
         <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="flex items-center justify-center h-64">
             <div className="text-gray-500 dark:text-gray-400">
@@ -142,6 +144,7 @@ export function Configuration() {
     return (
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
         <Header isHealthy={isHealthy} />
+        <Navigation />
         <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow">
             <div className="text-red-600 dark:text-red-400">
@@ -159,6 +162,7 @@ export function Configuration() {
         isHealthy={isHealthy}
         configRefreshTrigger={configRefreshTrigger}
       />
+      <Navigation />
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8 flex items-center justify-between">

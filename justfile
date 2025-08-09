@@ -174,6 +174,88 @@ clean:
     rm -rf ui/dist
     rm -rf e2e-tests/recordings
 
+# ====== Hook Client Commands ======
+
+# Build Rust hook client
+hook-build:
+    cd cco-hook-client && cargo build --release
+
+# Install hook client (build + configure)
+hook-install:
+    just hook-build
+    ./cco-hook-client/target/release/configure-claude --binary-path $(pwd)/cco-hook-client/target/release/cco-hook-client --backup
+
+# Check hook installation status
+hook-status:
+    ./cco-hook-client/target/release/cco-hook-client status
+
+# Check detailed hook installation status
+hook-status-detailed:
+    ./cco-hook-client/target/release/cco-hook-client status --detailed
+
+# Uninstall hooks from Claude Code
+hook-uninstall:
+    ./cco-hook-client/target/release/configure-claude --uninstall
+
+# Uninstall hooks without confirmation
+hook-uninstall-force:
+    ./cco-hook-client/target/release/configure-claude --uninstall --yes
+
+# Health check for hook client and server
+hook-health:
+    ./cco-hook-client/target/release/cco-hook-client --health-check
+
+# Update hook configuration (re-run configure)
+hook-update:
+    ./cco-hook-client/target/release/configure-claude --binary-path $(pwd)/cco-hook-client/target/release/cco-hook-client --force --backup
+
+# Build and test hook client
+hook-test:
+    cd cco-hook-client && cargo test
+    just hook-build
+    echo '{"type":"PreToolUse","session_id":"test","timestamp":"2024-01-01T12:00:00Z","tool":{"name":"Read","input":{"file_path":"test.txt"}}}' | ./cco-hook-client/target/release/cco-hook-client --dry-run
+
+# Generate default hook client config
+hook-config:
+    ./cco-hook-client/target/release/cco-hook-client config --output cco-hook-client.toml
+
+# Validate hook client configuration
+hook-validate:
+    ./cco-hook-client/target/release/cco-hook-client validate
+
+# Show hook client version information
+hook-version:
+    ./cco-hook-client/target/release/cco-hook-client version
+
+# View recent hook client log entries
+hook-logs:
+    @if [ -f ~/.cco-hook-client/hooks.log ]; then tail -50 ~/.cco-hook-client/hooks.log; else echo "No log file found at ~/.cco-hook-client/hooks.log"; fi
+
+# Follow hook client logs in real-time
+hook-logs-follow:
+    @if [ -f ~/.cco-hook-client/hooks.log ]; then tail -f ~/.cco-hook-client/hooks.log; else echo "No log file found. Creating and monitoring..."; touch ~/.cco-hook-client/hooks.log && tail -f ~/.cco-hook-client/hooks.log; fi
+
+# Clear hook client logs
+hook-logs-clear:
+    @if [ -f ~/.cco-hook-client/hooks.log ]; then > ~/.cco-hook-client/hooks.log && echo "Hook client logs cleared"; else echo "No log file found at ~/.cco-hook-client/hooks.log"; fi
+
+# Show hook client log file info
+hook-logs-info:
+    @echo "Hook Client Log Information:"
+    @echo "  Config: ~/.cco-hook-client/config.toml"
+    @if [ -f ~/.cco-hook-client/hooks.log ]; then echo "  Log file: ~/.cco-hook-client/hooks.log"; ls -lh ~/.cco-hook-client/hooks.log; else echo "  Log file: Not created yet"; fi
+
+# Clean hook client build artifacts
+hook-clean:
+    cd cco-hook-client && cargo clean
+
+# Full hook client development cycle (clean, build, test, status)
+hook-dev:
+    just hook-clean
+    just hook-build
+    just hook-test
+    just hook-status-detailed
+
 # ====== Quick Commands ======
 
 # Quick start for development

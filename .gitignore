@@ -34,3 +34,6 @@ demos/*
 
 # Taskmaster files
 .taskmaster/
+
+# Serena files
+.serena/

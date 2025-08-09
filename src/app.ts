@@ -6,7 +6,9 @@ import logger from "./logger.js";
 import { createAuditRoutes, stopAuditLogService } from "./routes/audit.js";
 import { createSSERoutes } from "./routes/sse.js";
 import { createConfigRoutes } from "./routes/config.js";
+import { createHookRoutes } from "./routes/hooks.js";
 import { stopConfigurationService } from "./services/ConfigurationService.js";
+import { stopHookEventService } from "./services/HookEventService.js";
 
 const app: Application = express();
 app.use(express.json());
@@ -45,6 +47,9 @@ app.use("/api", createAuditRoutes());
 
 // Mount configuration API routes
 app.use("/api", createConfigRoutes());
+
+// Mount hook API routes
+app.use("/api/hooks", createHookRoutes());
 
 app.post("/mcp", async (req: Request, res: Response) => {
   // In stateless mode, create a new instance of transport and server for each request
@@ -126,6 +131,7 @@ process.on("SIGTERM", async () => {
   logger.info("SIGTERM received, shutting down gracefully");
   await stopAuditLogService();
   stopConfigurationService();
+  stopHookEventService();
   process.exit(0);
 });
 
@@ -133,6 +139,7 @@ process.on("SIGINT", async () => {
   logger.info("SIGINT received, shutting down gracefully");
   await stopAuditLogService();
   stopConfigurationService();
+  stopHookEventService();
   process.exit(0);
 });
 
