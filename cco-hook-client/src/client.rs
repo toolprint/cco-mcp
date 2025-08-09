@@ -238,6 +238,15 @@ impl HttpClient {
             })?;
 
         // Validate the response
+        blocking_response.validate().map_err(|e| {
+            warn!(
+                event_id = %event_id,
+                error = %e,
+                "Invalid blocking response from server"
+            );
+            e
+        })?;
+
         match blocking_response.behavior.as_str() {
             "allow" => {
                 debug!(
@@ -253,11 +262,19 @@ impl HttpClient {
                     "Server denied tool execution"
                 );
             }
+            "ask" => {
+                info!(
+                    event_id = %event_id,
+                    message = %blocking_response.message,
+                    "Server requested user approval for tool execution"
+                );
+            }
             _ => {
+                // This should not happen after validation
                 warn!(
                     event_id = %event_id,
                     behavior = %blocking_response.behavior,
-                    "Unknown blocking behavior from server"
+                    "Unknown blocking behavior from server (validation should have caught this)"
                 );
             }
         }

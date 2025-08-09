@@ -19,12 +19,16 @@ const EVENT_TYPE_COLORS: Record<HookEventType, string> = {
   Notification: 'bg-yellow-100 text-yellow-800 border-yellow-200',
   Stop: 'bg-red-100 text-red-800 border-red-200',
   SubagentStop: 'bg-red-100 text-red-800 border-red-200',
+  UserPromptSubmit: 'bg-purple-100 text-purple-800 border-purple-200',
+  PreCompact: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+  SessionStart: 'bg-teal-100 text-teal-800 border-teal-200',
 };
 
 // Evaluation result colors
 const EVALUATION_COLORS = {
   allow: 'bg-green-100 text-green-800 border-green-200',
   deny: 'bg-red-100 text-red-800 border-red-200',
+  ask: 'bg-amber-100 text-amber-800 border-amber-200',
 };
 
 interface EventFiltersProps {
@@ -34,7 +38,16 @@ interface EventFiltersProps {
 }
 
 function EventFilters({ filters, onFiltersChange, onClearFilters }: EventFiltersProps) {
-  const eventTypes: HookEventType[] = ['PreToolUse', 'PostToolUse', 'Notification', 'Stop', 'SubagentStop'];
+  const eventTypes: HookEventType[] = [
+    'PreToolUse', 
+    'PostToolUse', 
+    'Notification', 
+    'Stop', 
+    'SubagentStop',
+    'UserPromptSubmit',
+    'PreCompact',
+    'SessionStart'
+  ];
 
   return (
     <Card className="p-4 mb-6">
@@ -143,6 +156,12 @@ function EventItem({ event }: EventItemProps) {
         return '🛑';
       case 'SubagentStop':
         return '⏹️';
+      case 'UserPromptSubmit':
+        return '💭';
+      case 'PreCompact':
+        return '📦';
+      case 'SessionStart':
+        return '🚀';
       default:
         return '📝';
     }
@@ -171,8 +190,8 @@ function EventItem({ event }: EventItemProps) {
             <div className="space-y-1 text-sm">
               <div><strong>Session:</strong> <code className="text-xs">{event.sessionId}</code></div>
               
-              {event.tool && (
-                <div><strong>Tool:</strong> {event.tool.name}</div>
+              {event.tool_name && (
+                <div><strong>Tool:</strong> {event.tool_name}</div>
               )}
               
               {event.message && (
@@ -181,6 +200,22 @@ function EventItem({ event }: EventItemProps) {
               
               {event.reason && (
                 <div><strong>Reason:</strong> {event.reason}</div>
+              )}
+              
+              {event.prompt && (
+                <div><strong>Prompt:</strong> {event.prompt}</div>
+              )}
+              
+              {event.trigger && (
+                <div><strong>Trigger:</strong> {event.trigger}</div>
+              )}
+              
+              {event.source && (
+                <div><strong>Source:</strong> {event.source}</div>
+              )}
+              
+              {event.stop_hook_active !== undefined && (
+                <div><strong>Stop Hook Active:</strong> {event.stop_hook_active ? 'Yes' : 'No'}</div>
               )}
               
               {event.agentIdentity && (

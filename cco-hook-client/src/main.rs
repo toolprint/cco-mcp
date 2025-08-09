@@ -92,16 +92,20 @@ async fn main() {
     if let Err(e) = run_cli(cli).await {
         error!(error = %e, "Application failed");
         
-        // Print user-friendly error messages
-        if e.is_client_error() {
+        // Print user-friendly error messages and use correct exit codes
+        // Exit code 2 is reserved for blocking errors per Claude Code spec
+        if e.is_blocking_error() {
+            eprintln!("Blocking error: {}", e);
+            process::exit(2); // Blocking error - stops Claude Code execution
+        } else if e.is_client_error() {
             eprintln!("Configuration error: {}", e);
-            process::exit(2);
+            process::exit(1); // Non-blocking error
         } else if e.is_server_error() {
             eprintln!("Server error: {}", e);
-            process::exit(3);
+            process::exit(1); // Non-blocking error
         } else {
             eprintln!("Fatal error: {}", e);
-            process::exit(1);
+            process::exit(1); // Non-blocking error
         }
     }
 }
@@ -391,6 +395,16 @@ async fn run_hook_client(cli: Cli, buffer_size: usize) -> Result<()> {
 
     log_startup_info!(config);
 
+    // Log Claude Code environment information
+    if let Some(project_dir) = &config.environment.claude_project_dir {
+        info!(
+            project_dir = %project_dir.display(),
+            "Claude Code project directory detected"
+        );
+    } else {
+        debug!("CLAUDE_PROJECT_DIR not set - using current directory as project root");
+    }
+
     // Validate that we're receiving piped input
     if !is_piped_input() && !cli.dry_run && !cli.health_check {
         warn!("No piped input detected. CCO Hook Client expects JSON events from Claude Code via stdin.");
@@ -519,6 +533,11 @@ async fn run_event_processing_loop(
                             Err(e) => {
                                 error!(error = %e, "Failed to process event");
                                 
+                                // If it's a blocking error, we need to exit with code 2
+                                if e.is_blocking_error() {
+                                    return Err(e);
+                                }
+                                
                                 // For PreToolUse events, output a default allow response on error
                                 if let Ok(Some((retry_event, _))) = reader.read_event().await {
                                     if retry_event.requires_response() {
@@ -588,6 +607,14 @@ async fn process_single_event(
         // Output the response to stdout for Claude Code
         let json_response = serde_json::to_string(&response)?;
         println!("{}", json_response);
+        
+        // If the response is a deny, return a blocking error
+        // This will cause the process to exit with code 2
+        if response.is_denied() {
+            return Err(HookClientError::blocking_error(
+                format!("Tool execution denied: {}", response.message)
+            ));
+        }
     }
     
     Ok(())

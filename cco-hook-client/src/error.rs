@@ -47,6 +47,9 @@ pub enum HookClientError {
 
     #[error("Claude Code configuration error: {message}")]
     ClaudeConfig { message: String },
+
+    #[error("Blocking error (tool execution denied): {message}")]
+    BlockingError { message: String },
 }
 
 impl HookClientError {
@@ -96,6 +99,12 @@ impl HookClientError {
         }
     }
 
+    pub fn blocking_error<S: Into<String>>(message: S) -> Self {
+        Self::BlockingError {
+            message: message.into(),
+        }
+    }
+
     /// Returns true if this error is retryable
     pub fn is_retryable(&self) -> bool {
         match self {
@@ -132,6 +141,11 @@ impl HookClientError {
             Self::Network { .. } | Self::Timeout { .. } | Self::ServerCommunication { .. } => true,
             _ => false,
         }
+    }
+
+    /// Returns true if this is a blocking error (should exit with code 2)
+    pub fn is_blocking_error(&self) -> bool {
+        matches!(self, Self::BlockingError { .. })
     }
 }
 
@@ -192,5 +206,16 @@ mod tests {
         let http_500_err = HookClientError::http_error(500, "Internal Server Error".to_string());
         assert!(!http_500_err.is_client_error());
         assert!(http_500_err.is_server_error());
+    }
+
+    #[test]
+    fn test_blocking_error() {
+        let blocking_err = HookClientError::blocking_error("Tool execution denied");
+        assert!(blocking_err.is_blocking_error());
+        assert!(!blocking_err.is_client_error());
+        assert!(!blocking_err.is_server_error());
+
+        let other_err = HookClientError::config("test");
+        assert!(!other_err.is_blocking_error());
     }
 }

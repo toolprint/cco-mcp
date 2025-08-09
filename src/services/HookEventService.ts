@@ -253,7 +253,7 @@ export class HookEventService extends EventEmitter {
 
       const evaluationTime = Date.now() - startTime;
 
-      let behavior: 'allow' | 'deny';
+      let behavior: 'allow' | 'deny' | 'ask';
       let message: string | undefined;
 
       switch (action) {
@@ -266,9 +266,9 @@ export class HookEventService extends EventEmitter {
           message = rule ? `Denied by rule: ${rule.name}` : 'Denied by default action';
           break;
         case 'review':
-          // For hooks, we treat review as allow since there's no interactive review
-          behavior = 'allow';
-          message = rule ? `Allowed (requires review): ${rule.name}` : 'Allowed (requires review) by default action';
+          // Now properly support 'ask' behavior for interactive review
+          behavior = 'ask';
+          message = rule ? `Manual approval required (rule: ${rule.name})` : 'Manual approval required by default action';
           break;
         default:
           behavior = 'allow';

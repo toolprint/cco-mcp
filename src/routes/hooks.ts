@@ -59,7 +59,8 @@ const hookEventSchema = z.object({
     case 'SubagentStop':
       return true; // No additional fields required
     default:
-      return false; // Unknown event type
+      // Allow unknown event types for forward compatibility
+      return true;
   }
 }, {
   message: "Invalid hook event: missing required fields for event type",
@@ -80,7 +81,7 @@ const hookEventQuerySchema = z.object({
     })
     .refine((val) => {
       if (!val) return true;
-      const validTypes = ['PreToolUse', 'PostToolUse', 'Notification', 'Stop', 'SubagentStop'];
+      const validTypes = ['PreToolUse', 'PostToolUse', 'Notification', 'Stop', 'SubagentStop', 'UserPromptSubmit', 'PreCompact', 'SessionStart'];
       if (Array.isArray(val)) {
         return val.every(t => validTypes.includes(t));
       }
@@ -182,18 +183,20 @@ export function createHookRoutes(): Router {
       // Add event to service
       const storedEvent = await hookService.addEvent(event);
 
-      // For PreToolUse events, return blocking response
-      if (event.hook_event_name === 'PreToolUse') {
+      // For blocking events, return blocking response
+      const blockingEventTypes = ['PreToolUse', 'UserPromptSubmit', 'Stop', 'SubagentStop', 'PreCompact'];
+      if (blockingEventTypes.includes(event.hook_event_name)) {
         const blockingResponse = await hookService.getBlockingResponse(event);
         
         logger.info(
           {
             eventId: storedEvent.id,
+            eventType: event.hook_event_name,
             toolName: event.tool_name,
             behavior: blockingResponse.behavior,
             ruleId: storedEvent.evaluation?.ruleId,
           },
-          "PreToolUse event evaluated and blocked/allowed"
+          `${event.hook_event_name} event evaluated with behavior: ${blockingResponse.behavior}`
         );
         
         return res.json(blockingResponse);
@@ -215,8 +218,9 @@ export function createHookRoutes(): Router {
         "Error processing hook event"
       );
       
-      // For PreToolUse events, default to allow on error
-      if (req.body?.hook_event_name === 'PreToolUse') {
+      // For blocking events, default to allow on error
+      const blockingEventTypes = ['PreToolUse', 'UserPromptSubmit', 'Stop', 'SubagentStop', 'PreCompact'];
+      if (req.body?.hook_event_name && blockingEventTypes.includes(req.body.hook_event_name)) {
         return res.json({
           behavior: 'allow',
           message: 'Processing error, defaulting to allow',

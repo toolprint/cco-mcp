@@ -43,7 +43,7 @@ export type HookEventType = 'PreToolUse' | 'PostToolUse' | 'Notification' | 'Sto
  * Blocking response for PreToolUse events
  */
 export interface BlockingResponse {
-  behavior: 'allow' | 'deny';
+  behavior: 'allow' | 'deny' | 'ask';
   message: string;
 }
 

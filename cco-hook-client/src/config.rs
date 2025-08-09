@@ -11,6 +11,8 @@ pub struct Config {
     pub server: ServerConfig,
     pub client: ClientConfig,
     pub logging: LoggingConfig,
+    #[serde(skip)]
+    pub environment: EnvironmentConfig,
 }
 
 impl Default for Config {
@@ -19,7 +21,32 @@ impl Default for Config {
             server: ServerConfig::default(),
             client: ClientConfig::default(),
             logging: LoggingConfig::default(),
+            environment: EnvironmentConfig::from_env(),
         }
+    }
+}
+
+/// Environment configuration from Claude Code
+#[derive(Debug, Clone)]
+pub struct EnvironmentConfig {
+    /// The project directory provided by Claude Code
+    pub claude_project_dir: Option<PathBuf>,
+}
+
+impl EnvironmentConfig {
+    /// Load environment configuration from environment variables
+    pub fn from_env() -> Self {
+        Self {
+            claude_project_dir: std::env::var("CLAUDE_PROJECT_DIR")
+                .ok()
+                .map(PathBuf::from),
+        }
+    }
+    
+    /// Get the project directory, falling back to current directory if not set
+    pub fn project_dir(&self) -> PathBuf {
+        self.claude_project_dir.clone()
+            .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
     }
 }
 
@@ -259,9 +286,13 @@ impl ConfigBuilder {
     }
 
     /// Build the final configuration
-    pub fn build(self) -> Result<Config> {
+    pub fn build(mut self) -> Result<Config> {
         // Validate the configuration
         self.validate()?;
+        
+        // Initialize environment configuration (skipped by serde)
+        self.config.environment = EnvironmentConfig::from_env();
+        
         Ok(self.config)
     }
 
