@@ -6,7 +6,7 @@ Real-time audit and approval system for Claude Code tool calls. Get instant visi
 
 ## Overview
 
-CCO-MCP provides a security layer between Claude Code and your system, enabling you to monitor and control AI tool calls in real-time. It acts as a firewall for AI actions, allowing you to review sensitive operations before they execute while auto-approving safe ones based on configurable rules.  This let's you scale to many more non-interactive Claude Code instances running in the background without incurring "tab-switching fatigue".
+CCO-MCP provides a security layer between Claude Code and your system, enabling you to monitor and control AI tool calls in real-time. It acts as a firewall for AI actions, allowing you to review sensitive operations before they execute while auto-approving safe ones based on configurable rules. This let's you scale to many more non-interactive Claude Code instances running in the background without incurring "tab-switching fatigue".
 
 ## Get Started
 
@@ -56,12 +56,15 @@ This enables Claude to request approval through CCO-MCP before executing sensiti
 ## Main Features
 
 ### 🛡️ Smart Approval Rules
+
 Create rules to auto-approve safe operations (like file reads) while requiring manual approval for sensitive ones (like running bash commands).
 
 ### 📊 Real-Time Dashboard
+
 Monitor all tool calls as they happen with live updates via Server-Sent Events.
 
 ### 🔍 Detailed Audit Logs
+
 Every tool call is logged with full context including agent identity, parameters, and approval status.
 
 ## Configuration Options

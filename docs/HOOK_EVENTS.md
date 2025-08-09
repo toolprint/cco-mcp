@@ -5,6 +5,7 @@ This document outlines the integration of Claude Code hooks with CCO-MCP, enabli
 ## Overview
 
 CCO-MCP will support Claude Code's hook system to:
+
 1. Display all hook events in a read-only dashboard
 2. Evaluate PreToolUse events against existing approval rules
 3. Block tool calls that match deny rules automatically
@@ -14,7 +15,9 @@ CCO-MCP will support Claude Code's hook system to:
 ### Components
 
 #### 1. Hook Bridge (`/hooks/bridge.js`)
+
 A simple Node.js script that:
+
 - Reads hook events from stdin (sent by Claude Code)
 - Parses the JSON event data
 - Forwards events to CCO-MCP server via HTTP POST
@@ -22,15 +25,15 @@ A simple Node.js script that:
 
 ```javascript
 // Basic structure
-process.stdin.on('data', async (data) => {
+process.stdin.on("data", async (data) => {
   const event = JSON.parse(data);
-  const response = await fetch('http://localhost:8660/api/hooks/event', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(event)
+  const response = await fetch("http://localhost:8660/api/hooks/event", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(event),
   });
-  
-  if (event.type === 'PreToolUse') {
+
+  if (event.type === "PreToolUse") {
     const result = await response.json();
     console.log(JSON.stringify(result));
   }
@@ -38,20 +41,25 @@ process.stdin.on('data', async (data) => {
 ```
 
 #### 2. Hook Event Service (`src/services/HookEventService.ts`)
+
 Manages hook events with:
+
 - In-memory storage (similar to audit log service)
 - Event type enumeration and validation
 - Integration with ConfigurationService for rule evaluation
 - SSE event emission for dashboard updates
 
 Key methods:
+
 - `addEvent(event: HookEvent): void` - Store new event
 - `evaluatePreToolUse(event: PreToolUseEvent): BlockingResponse` - Apply rules
 - `getEvents(filters?: EventFilters): HookEvent[]` - Retrieve events
 - `on('new-event', handler)` - Event subscription
 
 #### 3. Events Dashboard (`/events`)
+
 A new read-only dashboard tab featuring:
+
 - Real-time event stream using SSE
 - Color-coded event types:
   - PreToolUse: Blue
@@ -65,9 +73,11 @@ A new read-only dashboard tab featuring:
 ### API Endpoints
 
 #### `POST /api/hooks/event`
+
 Receives hook events from the bridge.
 
 Request:
+
 ```json
 {
   "type": "PreToolUse",
@@ -84,6 +94,7 @@ Request:
 ```
 
 Response (for PreToolUse only):
+
 ```json
 {
   "behavior": "deny",
@@ -92,16 +103,20 @@ Response (for PreToolUse only):
 ```
 
 #### `GET /api/hooks/events`
+
 Retrieves recent hook events with optional filters.
 
 Query parameters:
+
 - `type`: Filter by event type
 - `sessionId`: Filter by session
 - `limit`: Maximum events to return (default: 100)
 - `since`: ISO timestamp for events after this time
 
 #### SSE Extension
+
 Add new event types to existing SSE stream:
+
 - `hook-event`: New hook event received
 - `hook-evaluation`: PreToolUse evaluation result
 
@@ -109,15 +124,17 @@ Add new event types to existing SSE stream:
 
 1. **Event Receipt**: Bridge sends PreToolUse event to server
 2. **Rule Evaluation**:
+
    ```typescript
    const toolCall: ToolCallInfo = {
      toolName: event.tool.name,
      agentIdentity: event.agentIdentity,
-     input: event.tool.input
+     input: event.tool.input,
    };
-   
+
    const { action, rule } = configService.getActionForToolCall(toolCall);
    ```
+
 3. **Response Generation**:
    - If `action === "deny"`: Return block response
    - If `action === "approve"` or `"review"`: Return allow response
@@ -127,38 +144,53 @@ Add new event types to existing SSE stream:
 ## Hook Configuration
 
 ### Claude Code Settings
+
 Add to `~/.claude/settings.json`:
 
 ```json
 {
   "hooks": {
-    "PreToolUse": [{
-      "matcher": ".*",
-      "hooks": [{
-        "type": "command",
-        "command": "node /path/to/cco-mcp/hooks/bridge.js"
-      }]
-    }],
-    "PostToolUse": [{
-      "matcher": ".*",
-      "hooks": [{
-        "type": "command",
-        "command": "node /path/to/cco-mcp/hooks/bridge.js"
-      }]
-    }],
-    "Notification": [{
-      "matcher": ".*",
-      "hooks": [{
-        "type": "command",
-        "command": "node /path/to/cco-mcp/hooks/bridge.js"
-      }]
-    }]
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /path/to/cco-mcp/hooks/bridge.js"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /path/to/cco-mcp/hooks/bridge.js"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /path/to/cco-mcp/hooks/bridge.js"
+          }
+        ]
+      }
+    ]
   }
 }
 ```
 
 ### Installation Script
+
 Provide a helper script to:
+
 1. Locate Claude Code settings file
 2. Backup existing configuration
 3. Add hook configuration
@@ -167,9 +199,10 @@ Provide a helper script to:
 ## Event Types
 
 ### PreToolUse
+
 ```typescript
 interface PreToolUseEvent {
-  type: 'PreToolUse';
+  type: "PreToolUse";
   sessionId: string;
   timestamp: string;
   tool: {
@@ -181,9 +214,10 @@ interface PreToolUseEvent {
 ```
 
 ### PostToolUse
+
 ```typescript
 interface PostToolUseEvent {
-  type: 'PostToolUse';
+  type: "PostToolUse";
   sessionId: string;
   timestamp: string;
   tool: {
@@ -198,20 +232,22 @@ interface PostToolUseEvent {
 ```
 
 ### Notification
+
 ```typescript
 interface NotificationEvent {
-  type: 'Notification';
+  type: "Notification";
   sessionId: string;
   timestamp: string;
   message: string;
-  level: 'info' | 'warning' | 'error';
+  level: "info" | "warning" | "error";
 }
 ```
 
 ### Stop/SubagentStop
+
 ```typescript
 interface StopEvent {
-  type: 'Stop' | 'SubagentStop';
+  type: "Stop" | "SubagentStop";
   sessionId: string;
   timestamp: string;
   reason?: string;
@@ -222,18 +258,21 @@ interface StopEvent {
 ## UI Components
 
 ### Events List Component
+
 - Virtual scrolling for performance
 - Event type badges with colors
 - Timestamp formatting
 - Expandable detail view
 
 ### Event Detail Component
+
 - JSON syntax highlighting
 - Copy to clipboard functionality
 - Rule match information (for PreToolUse)
 - Evaluation result display
 
 ### Filter Bar Component
+
 - Event type multi-select
 - Session ID search
 - Date/time range picker
@@ -250,11 +289,13 @@ interface StopEvent {
 ## Testing Strategy
 
 1. **Unit Tests**:
+
    - HookEventService rule evaluation
    - API endpoint validation
    - Event filtering logic
 
 2. **Integration Tests**:
+
    - Bridge to server communication
    - Rule evaluation with ConfigurationService
    - SSE event propagation

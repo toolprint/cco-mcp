@@ -1,86 +1,72 @@
 /**
- * Hook event types for UI
+ * Hook event types and interfaces for Claude Code integration (synchronized with backend)
+ * Uses Claude Code's official hook event format
  */
 
-export type HookEventType = 'PreToolUse' | 'PostToolUse' | 'Notification' | 'Stop' | 'SubagentStop';
+/**
+ * Hook event types supported by Claude Code
+ */
+export type HookEventType =
+  | "PreToolUse"
+  | "PostToolUse"
+  | "Notification"
+  | "Stop"
+  | "SubagentStop"
+  | "UserPromptSubmit"
+  | "PreCompact"
+  | "SessionStart";
 
-export interface HookTool {
-  name: string;
-  input: Record<string, any>;
-  output?: any;
-  error?: string;
-}
+/**
+ * Claude Code's official hook event format
+ */
+export interface HookEvent {
+  session_id: string;
+  transcript_path: string;
+  cwd: string;
+  hook_event_name: string;
 
-export interface BaseHookEvent {
-  type: HookEventType;
-  sessionId: string;
-  timestamp: string;
-}
+  // Tool-related fields (for PreToolUse, PostToolUse)
+  tool_name?: string;
+  tool_input?: Record<string, any>;
+  tool_response?: string | Record<string, any>;
 
-export interface PreToolUseEvent extends BaseHookEvent {
-  type: 'PreToolUse';
-  tool: HookTool;
-  agentIdentity?: string;
-}
-
-export interface PostToolUseEvent extends BaseHookEvent {
-  type: 'PostToolUse';
-  tool: HookTool;
-  agentIdentity?: string;
-  duration: number;
-}
-
-export interface NotificationEvent extends BaseHookEvent {
-  type: 'Notification';
-  message: string;
-  level: 'info' | 'warning' | 'error';
-}
-
-export interface StopEvent extends BaseHookEvent {
-  type: 'Stop';
-  reason?: string;
-  agentIdentity?: string;
-}
-
-export interface SubagentStopEvent extends BaseHookEvent {
-  type: 'SubagentStop';
-  reason?: string;
-  agentIdentity?: string;
-}
-
-export type HookEvent = 
-  | PreToolUseEvent 
-  | PostToolUseEvent 
-  | NotificationEvent 
-  | StopEvent 
-  | SubagentStopEvent;
-
-export interface HookEvaluationResult {
-  behavior: 'allow' | 'deny';
+  // Notification fields
   message?: string;
+
+  // Stop/SubagentStop fields
+  stop_hook_active?: boolean;
+
+  // UserPromptSubmit fields
+  prompt?: string;
+
+  // PreCompact fields
+  trigger?: string;
+  custom_instructions?: string;
+
+  // SessionStart fields
+  source?: string;
+}
+
+/**
+ * Blocking response for PreToolUse events
+ */
+export interface BlockingResponse {
+  behavior: "allow" | "deny" | "ask";
+  message: string;
+}
+
+/**
+ * Hook evaluation result with additional metadata
+ */
+export interface HookEvaluationResult extends BlockingResponse {
   ruleId?: string;
   ruleName?: string;
   evaluationTime: number;
 }
 
-export interface StoredHookEvent {
-  id: string;
-  receivedAt: string;
-  evaluation?: HookEvaluationResult;
-  expiresAt: string;
-  
-  // Event properties
-  type: HookEventType;
-  sessionId: string;
-  timestamp: string;
-  tool?: HookTool;
-  agentIdentity?: string;
-  message?: string;
-  level?: 'info' | 'warning' | 'error';
-  reason?: string;
-  duration?: number;
-}
-
+/**
+ * Filters for querying hook events
+ */
 export interface HookEventFilters {
   type?: HookEventType | HookEventType[];
   sessionId?: string;
@@ -88,10 +74,72 @@ export interface HookEventFilters {
   toolName?: string;
   limit?: number;
   offset?: number;
-  since?: string;
-  before?: string;
+  since?: string; // ISO timestamp
+  before?: string; // ISO timestamp
 }
 
+/**
+ * Hook event with metadata for storage and display (matches backend)
+ */
+export interface StoredHookEvent {
+  /** Unique identifier for the event */
+  id: string;
+
+  /** When the event was received by CCO-MCP */
+  receivedAt: Date | string;
+
+  /** Evaluation result for PreToolUse events */
+  evaluation?: HookEvaluationResult;
+
+  /** Time-to-live for event cleanup */
+  expiresAt: Date | string;
+
+  /** Event type */
+  type: string; // hook_event_name from Claude Code
+
+  /** Session ID */
+  sessionId: string; // session_id from Claude Code
+
+  /** Timestamp (generated since Claude Code doesn't send one) */
+  timestamp: string;
+
+  /** Tool name (for PreToolUse and PostToolUse) */
+  tool_name?: string;
+
+  /** Tool input (for PreToolUse and PostToolUse) */
+  tool_input?: Record<string, any>;
+
+  /** Tool response (for PostToolUse) */
+  tool_response?: string | Record<string, any>;
+
+  /** Message (for Notification events) */
+  message?: string;
+
+  /** Reason (for Stop events) */
+  reason?: string;
+
+  /** Claude Code specific fields */
+  transcript_path?: string;
+  cwd?: string;
+
+  /** Additional fields for other event types */
+  prompt?: string;
+  trigger?: string;
+  custom_instructions?: string;
+  source?: string;
+  stop_hook_active?: boolean;
+
+  /** Audit log integration */
+  auditEntryId?: string;
+
+  /** Legacy fields for backward compatibility */
+  agentIdentity?: string;
+  duration?: number;
+}
+
+/**
+ * Result of paginated hook event query
+ */
 export interface HookEventQueryResult {
   events: StoredHookEvent[];
   total: number;
@@ -99,6 +147,9 @@ export interface HookEventQueryResult {
   limit: number;
 }
 
+/**
+ * Hook event statistics
+ */
 export interface HookEventStats {
   totalEvents: number;
   eventsByType: Record<HookEventType, number>;
@@ -110,4 +161,22 @@ export interface HookEventStats {
   };
   oldestEvent?: string;
   newestEvent?: string;
+}
+
+/**
+ * Hook service event types for SSE streaming
+ */
+export type HookServiceEventType =
+  | "new-hook-event"
+  | "hook-evaluation"
+  | "hook-cleanup";
+
+/**
+ * Hook service event payload
+ */
+export interface HookServiceEvent {
+  type: HookServiceEventType;
+  event?: StoredHookEvent;
+  evaluation?: HookEvaluationResult;
+  cleanedCount?: number;
 }

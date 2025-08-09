@@ -5,6 +5,7 @@ This document outlines the design for a Rust-based replacement of the current No
 ## Current System Problems
 
 The existing Node.js hook bridge has several limitations:
+
 - **Runtime Dependency**: Requires Node.js installation on all systems
 - **Startup Overhead**: ~200ms Node.js boot time for each hook event
 - **Memory Usage**: ~30MB memory footprint from V8 runtime
@@ -14,6 +15,7 @@ The existing Node.js hook bridge has several limitations:
 ## Rust-based Solution Overview
 
 ### Core Benefits
+
 - **Single Binary**: No runtime dependencies, native performance
 - **40x Faster Startup**: ~5ms vs ~200ms startup time
 - **6-10x Lower Memory**: ~2-5MB vs ~30MB memory usage
@@ -72,27 +74,27 @@ uuid = { version = "1.0", features = ["v4"] }           # Unique IDs
 async fn process_events() -> Result<()> {
     let mut stdin_reader = StdinReader::new();
     let http_client = HttpClient::new(&config).await?;
-    
+
     while let Some(line) = stdin_reader.read_line().await? {
         // Parse hook event from Claude Code
         let event: HookEvent = serde_json::from_str(&line)
             .context("Failed to parse hook event")?;
-            
+
         // Validate event structure
         event.validate()?;
-        
+
         // Forward to CCO-MCP server with retry logic
         let response = http_client
             .send_event(event.clone())
             .await?;
-            
+
         // Handle blocking response for PreToolUse events
         if event.event_type == "PreToolUse" {
             let blocking_response = response.json::<BlockingResponse>().await?;
             println!("{}", serde_json::to_string(&blocking_response)?);
         }
     }
-    
+
     Ok(())
 }
 ```
@@ -160,7 +162,7 @@ impl HttpClient {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_millis(config.client.connection_timeout_ms))
             .build()?;
-            
+
         let base_url = format!(
             "{}://{}:{}{}",
             config.server.protocol,
@@ -168,18 +170,18 @@ impl HttpClient {
             config.server.port,
             config.server.base_path
         );
-        
+
         Ok(Self {
             client,
             base_url,
             retry_config: RetryConfig::from(&config.client),
         })
     }
-    
+
     pub async fn send_event(&self, event: HookEvent) -> Result<reqwest::Response> {
         let mut attempt = 0;
         let mut backoff = Duration::from_millis(self.retry_config.initial_backoff_ms);
-        
+
         loop {
             match self.try_send_event(&event).await {
                 Ok(response) => return Ok(response),
@@ -191,7 +193,7 @@ impl HttpClient {
                         error = %e,
                         "Request failed, retrying"
                     );
-                    
+
                     tokio::time::sleep(backoff).await;
                     backoff = std::cmp::min(
                         backoff * 2,
@@ -210,10 +212,10 @@ impl HttpClient {
             }
         }
     }
-    
+
     async fn try_send_event(&self, event: &HookEvent) -> Result<reqwest::Response> {
         let url = format!("{}/event", self.base_url);
-        
+
         self.client
             .post(&url)
             .json(event)
@@ -289,13 +291,14 @@ pub enum BlockingBehavior {
 ### 7. Cross-Platform Distribution
 
 #### GitHub Releases with CI/CD
+
 ```yaml
 # .github/workflows/release.yml
 name: Release
 
 on:
   push:
-    tags: ['v*']
+    tags: ["v*"]
 
 jobs:
   build:
@@ -321,10 +324,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-      
+
       - name: Build binary
         run: cargo build --release --target ${{ matrix.target }}
-      
+
       - name: Upload release asset
         uses: actions/upload-release-asset@v1
         with:
@@ -336,10 +339,11 @@ jobs:
 #### Installation Methods
 
 1. **Direct Binary Download**:
+
    ```bash
    # Install script (install.sh)
    curl -fsSL https://get.cco-mcp.com/install.sh | sh
-   
+
    # Manual download
    wget https://github.com/cco-mcp/hook-client/releases/latest/download/cco-hook-client-linux-x86_64
    chmod +x cco-hook-client-linux-x86_64
@@ -347,13 +351,14 @@ jobs:
    ```
 
 2. **Package Managers**:
+
    ```bash
    # Cargo (for Rust users)
    cargo install cco-hook-client
-   
+
    # Homebrew (macOS/Linux)
    brew install cco-hook-client
-   
+
    # Scoop (Windows)
    scoop install cco-hook-client
    ```
@@ -374,16 +379,16 @@ use std::path::PathBuf;
 struct Args {
     #[arg(long, default_value = "~/.claude")]
     claude_dir: PathBuf,
-    
+
     #[arg(long)]
     binary_path: Option<PathBuf>,
-    
+
     #[arg(long)]
     server_url: Option<String>,
-    
+
     #[arg(long)]
     dry_run: bool,
-    
+
     #[arg(long)]
     backup: bool,
 }
@@ -391,35 +396,35 @@ struct Args {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    
+
     // Auto-detect binary location if not specified
     let binary_path = match args.binary_path {
         Some(path) => path,
         None => which::which("cco-hook-client")
             .context("Could not find cco-hook-client binary in PATH")?,
     };
-    
+
     // Verify binary works
     verify_binary_works(&binary_path).await?;
-    
+
     // Configure Claude Code settings.json
     let settings_path = configure_claude_settings(
-        &args.claude_dir, 
-        &binary_path, 
+        &args.claude_dir,
+        &binary_path,
         args.server_url.as_deref(),
         args.dry_run,
         args.backup
     )?;
-    
+
     // Verify CCO-MCP server connection
     verify_server_connection(args.server_url.as_deref()).await?;
-    
+
     println!("✅ Claude Code hooks configured successfully!");
     println!("   Binary: {}", binary_path.display());
     println!("   Config: {}", settings_path.display());
     println!("   Server: {}", args.server_url.unwrap_or_else(|| "http://localhost:8660".to_string()));
     println!("\n🚀 Start CCO-MCP server and begin monitoring hook events!");
-    
+
     Ok(())
 }
 
@@ -435,9 +440,9 @@ fn configure_claude_settings(
         std::fs::create_dir_all(claude_dir)?;
         println!("📁 Created Claude directory: {}", claude_dir.display());
     }
-    
+
     let settings_path = claude_dir.join("settings.json");
-    
+
     // Read existing settings or create default
     let mut settings: Value = if settings_path.exists() {
         let content = std::fs::read_to_string(&settings_path)?;
@@ -445,7 +450,7 @@ fn configure_claude_settings(
     } else {
         serde_json::json!({})
     };
-    
+
     // Create backup if requested and settings exist
     if backup && settings_path.exists() {
         let timestamp = chrono::Utc::now().format("%Y%m%d-%H%M%S");
@@ -453,7 +458,7 @@ fn configure_claude_settings(
         std::fs::copy(&settings_path, &backup_path)?;
         println!("💾 Backup created: {}", backup_path.display());
     }
-    
+
     // Generate hook configuration
     let hook_command = format!("\"{}\"", binary_path.display());
     let hook_config = serde_json::json!([{
@@ -463,24 +468,24 @@ fn configure_claude_settings(
             "command": hook_command
         }]
     }]);
-    
+
     // Update hooks section
     if settings.get("hooks").is_none() {
         settings["hooks"] = serde_json::json!({});
     }
-    
+
     let hooks = settings["hooks"].as_object_mut().unwrap();
-    
+
     // Configure all hook types
     for event_type in ["PreToolUse", "PostToolUse", "Notification", "Stop", "SubagentStop"] {
         hooks.insert(event_type.to_string(), hook_config.clone());
     }
-    
+
     // Add server configuration if specified
     if let Some(url) = server_url {
         settings["cco_server_url"] = serde_json::Value::String(url.to_string());
     }
-    
+
     if !dry_run {
         // Write updated settings
         let content = serde_json::to_string_pretty(&settings)?;
@@ -491,25 +496,26 @@ fn configure_claude_settings(
         println!("Configuration preview:");
         println!("{}", serde_json::to_string_pretty(&settings)?);
     }
-    
+
     Ok(settings_path)
 }
 ```
 
 ## Performance Comparison
 
-| Metric | Node.js Bridge | Rust Binary | Improvement |
-|--------|----------------|-------------|-------------|
-| Startup Time | ~200ms | ~5ms | **40x faster** |
-| Memory Usage | ~30MB | ~2-5MB | **6-10x lower** |
-| Binary Size | N/A (runtime) | ~8-12MB | **Self-contained** |
-| Dependencies | Node.js + npm | None | **Zero deps** |
-| CPU Usage | Higher (V8 overhead) | Minimal | **Native performance** |
-| Installation Size | ~50-100MB | ~8-12MB | **5-10x smaller** |
+| Metric            | Node.js Bridge       | Rust Binary | Improvement            |
+| ----------------- | -------------------- | ----------- | ---------------------- |
+| Startup Time      | ~200ms               | ~5ms        | **40x faster**         |
+| Memory Usage      | ~30MB                | ~2-5MB      | **6-10x lower**        |
+| Binary Size       | N/A (runtime)        | ~8-12MB     | **Self-contained**     |
+| Dependencies      | Node.js + npm        | None        | **Zero deps**          |
+| CPU Usage         | Higher (V8 overhead) | Minimal     | **Native performance** |
+| Installation Size | ~50-100MB            | ~8-12MB     | **5-10x smaller**      |
 
 ## Implementation Roadmap
 
 ### Phase 1: Core Functionality (Week 1-2)
+
 - [ ] Create Rust workspace with proper project structure
 - [ ] Implement event parsing and validation with serde
 - [ ] Build HTTP client with basic retry logic and connection pooling
@@ -518,6 +524,7 @@ fn configure_claude_settings(
 - [ ] Add structured logging with tracing crate
 
 ### Phase 2: Distribution & CI/CD (Week 3)
+
 - [ ] Set up cross-compilation CI/CD pipeline for all platforms
 - [ ] Create GitHub releases with automated binary builds
 - [ ] Write cross-platform installation script (`install.sh`)
@@ -525,6 +532,7 @@ fn configure_claude_settings(
 - [ ] Set up package manager distributions (Homebrew, Scoop)
 
 ### Phase 3: Advanced Features (Week 4)
+
 - [ ] Implement advanced retry logic with exponential backoff
 - [ ] Add connection health checks and server validation
 - [ ] Build comprehensive error handling and recovery
@@ -532,6 +540,7 @@ fn configure_claude_settings(
 - [ ] Implement auto-updater mechanism with rollback
 
 ### Phase 4: Testing & Documentation (Week 5)
+
 - [ ] Create comprehensive unit and integration tests
 - [ ] Build end-to-end tests with CCO-MCP server
 - [ ] Performance benchmarking against Node.js version
@@ -539,6 +548,7 @@ fn configure_claude_settings(
 - [ ] Create troubleshooting and debugging guides
 
 ### Phase 5: Release & Migration (Week 6)
+
 - [ ] Beta testing with existing CCO-MCP users
 - [ ] Create migration guide from Node.js bridge
 - [ ] Security audit and code review
@@ -548,12 +558,14 @@ fn configure_claude_settings(
 ## Migration Strategy
 
 ### Backward Compatibility
+
 - **API Contract**: Maintain exact same HTTP API with CCO-MCP server
 - **Event Format**: Use identical JSON event structure from Claude Code hooks
 - **Configuration**: Same Claude Code `settings.json` format and structure
 - **Drop-in Replacement**: Binary can replace Node.js script without server changes
 
 ### Migration Path
+
 1. **Parallel Installation**: Install Rust binary alongside existing Node.js version
 2. **Testing**: Verify Rust client works with current CCO-MCP setup
 3. **Configuration Switch**: Update Claude Code settings to use Rust binary
@@ -561,6 +573,7 @@ fn configure_claude_settings(
 5. **Cleanup**: Remove Node.js dependencies once migration confirmed
 
 ### Rollback Plan
+
 - Keep automatic backups of Claude Code settings
 - Provide easy rollback command in configure utility
 - Document troubleshooting steps for common issues
@@ -569,18 +582,21 @@ fn configure_claude_settings(
 ## Security Considerations
 
 ### Binary Security
+
 - **Minimal Dependencies**: Reduce attack surface with fewer dependencies
 - **Memory Safety**: Rust prevents buffer overflows and memory corruption
 - **Input Validation**: Strict JSON schema validation for all events
 - **Error Handling**: No panic conditions that could crash the client
 
 ### Network Security
+
 - **TLS Support**: HTTPS connections to CCO-MCP server
 - **Timeout Protection**: Prevent hanging connections
 - **Retry Limits**: Avoid infinite retry loops
 - **Rate Limiting**: Built-in backoff prevents server overload
 
 ### Configuration Security
+
 - **Path Validation**: Verify all file paths before use
 - **Permission Checks**: Ensure proper file permissions
 - **Secret Handling**: No sensitive data in logs or config files
@@ -589,18 +605,21 @@ fn configure_claude_settings(
 ## Future Enhancements
 
 ### Advanced Features
+
 - **Metrics Collection**: Optional Prometheus metrics export
 - **Health Dashboard**: Built-in web interface for client status
 - **Configuration UI**: Web-based configuration management
 - **Plugin System**: Extensible architecture for custom processing
 
 ### Performance Optimizations
+
 - **Connection Pooling**: Reuse HTTP connections for better performance
 - **Batch Processing**: Group multiple events for efficiency
 - **Compression**: Optional gzip compression for large payloads
 - **Async Batching**: Buffer and batch events during high load
 
 ### Monitoring & Observability
+
 - **Structured Logging**: JSON logs with correlation IDs
 - **Tracing Support**: Distributed tracing integration
 - **Error Tracking**: Integration with error monitoring services

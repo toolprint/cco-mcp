@@ -215,22 +215,40 @@ export function createSSERoutes(): Router {
     // Helper function to check if a hook event matches filters
     const matchesFilters = (event: any): boolean => {
       if (filters.type && event.type !== filters.type) return false;
-      if (filters.sessionId && event.sessionId !== filters.sessionId) return false;
-      if (filters.agentIdentity && event.agentIdentity !== filters.agentIdentity) return false;
-      if (filters.toolName && 'tool' in event && event.tool?.name !== filters.toolName) return false;
+      if (filters.sessionId && event.sessionId !== filters.sessionId)
+        return false;
+      if (
+        filters.agentIdentity &&
+        event.agentIdentity !== filters.agentIdentity
+      )
+        return false;
+      if (
+        filters.toolName &&
+        "tool" in event &&
+        event.tool?.name !== filters.toolName
+      )
+        return false;
       return true;
     };
 
     // Hook event handlers
     const onNewHookEvent = (serviceEvent: HookServiceEvent) => {
-      if (serviceEvent.type === "new-hook-event" && serviceEvent.event && matchesFilters(serviceEvent.event)) {
+      if (
+        serviceEvent.type === "new-hook-event" &&
+        serviceEvent.event &&
+        matchesFilters(serviceEvent.event)
+      ) {
         res.write("event: new-hook-event\n");
         res.write(`data: ${JSON.stringify(serviceEvent.event)}\n\n`);
       }
     };
 
     const onHookEvaluation = (serviceEvent: HookServiceEvent) => {
-      if (serviceEvent.type === "hook-evaluation" && serviceEvent.event && matchesFilters(serviceEvent.event)) {
+      if (
+        serviceEvent.type === "hook-evaluation" &&
+        serviceEvent.event &&
+        matchesFilters(serviceEvent.event)
+      ) {
         res.write("event: hook-evaluation\n");
         res.write(
           `data: ${JSON.stringify({

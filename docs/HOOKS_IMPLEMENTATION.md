@@ -5,6 +5,7 @@ This document summarizes the complete implementation of Claude Code hooks integr
 ## Overview
 
 The hooks integration enables CCO-MCP to:
+
 1. Receive and monitor all Claude Code hook events in real-time
 2. Automatically evaluate PreToolUse events against configured approval rules
 3. Block/allow tool calls based on rule evaluation
@@ -15,12 +16,14 @@ The hooks integration enables CCO-MCP to:
 ### 1. Backend Components
 
 #### Hook Event Types (`src/types/hooks.ts`)
+
 - Comprehensive TypeScript interfaces for all hook event types
 - `StoredHookEvent` interface for persisted events with metadata
 - `HookEvaluationResult` for PreToolUse evaluation results
 - Query filters and pagination interfaces
 
 #### Hook Event Service (`src/services/HookEventService.ts`)
+
 - `HookEventService` class managing in-memory event storage
 - LRU cache with TTL for efficient memory management
 - Integration with existing `ConfigurationService` for rule evaluation
@@ -28,6 +31,7 @@ The hooks integration enables CCO-MCP to:
 - Automatic PreToolUse evaluation with blocking responses
 
 #### Hook API Endpoints (`src/routes/hooks.ts`)
+
 - `POST /api/hooks/event` - Receive hook events from bridge
 - `GET /api/hooks/events` - Query events with filters
 - `GET /api/hooks/events/:id` - Get specific event
@@ -36,6 +40,7 @@ The hooks integration enables CCO-MCP to:
 - Full Zod validation for all endpoints
 
 #### Hook Bridge Script (`hooks/bridge.js`)
+
 - Node.js script reading hook events from stdin
 - HTTP client forwarding events to CCO-MCP server
 - Returns blocking responses for PreToolUse events
@@ -43,6 +48,7 @@ The hooks integration enables CCO-MCP to:
 - Environment variable configuration
 
 #### SSE Integration (`src/routes/sse.ts`)
+
 - Extended existing SSE implementation
 - New `/api/hooks/stream` endpoint for real-time hook events
 - Event filtering and real-time updates
@@ -51,16 +57,19 @@ The hooks integration enables CCO-MCP to:
 ### 2. Frontend Components
 
 #### Hook Event Types (`ui/src/types/hooks.ts`)
+
 - Frontend TypeScript definitions matching backend types
 - UI-specific interfaces and filters
 
 #### Hook Event Hooks (`ui/src/hooks/useHookEvents.ts`)
+
 - `useHookEvents` - Fetch events with filtering
 - `useHookEventStats` - Statistics API integration
 - `useHookEventSSE` - Real-time SSE connection
 - Comprehensive error handling and loading states
 
 #### Events Dashboard (`ui/src/pages/Events.tsx`)
+
 - Complete dashboard for viewing all hook events
 - Real-time updates via SSE
 - Event type filtering and search
@@ -69,6 +78,7 @@ The hooks integration enables CCO-MCP to:
 - Live/offline connection status
 
 #### Navigation Integration
+
 - Updated router (`ui/src/AppRouter.tsx`) with `/events` route
 - Navigation component (`ui/src/components/layout/navigation.tsx`)
 - Tab-based navigation across all pages
@@ -76,6 +86,7 @@ The hooks integration enables CCO-MCP to:
 ### 3. Installation and Configuration
 
 #### Installation Script (`scripts/install-hooks.js`)
+
 - Automated Claude Code settings configuration
 - Backup existing configuration
 - Add hook configuration for all event types
@@ -85,6 +96,7 @@ The hooks integration enables CCO-MCP to:
 ## Architecture Integration
 
 ### Service Layer
+
 ```
 HookEventService
 ├── Event Storage (LRU Cache with TTL)
@@ -94,6 +106,7 @@ HookEventService
 ```
 
 ### API Layer
+
 ```
 /api/hooks/
 ├── POST /event (Bridge → CCO-MCP)
@@ -104,11 +117,13 @@ HookEventService
 ```
 
 ### Real-time Flow
+
 ```
 Claude Code Hook → Bridge Script → HTTP POST → HookEventService → SSE → React UI
 ```
 
 ### Rule Evaluation Flow
+
 ```
 PreToolUse Event → ConfigurationService.getActionForToolCall() → BlockingResponse → Bridge → Claude Code
 ```
@@ -116,18 +131,21 @@ PreToolUse Event → ConfigurationService.getActionForToolCall() → BlockingRes
 ## Key Features
 
 ### 1. Real-time Monitoring
+
 - All hook events displayed in real-time dashboard
 - SSE streaming with automatic reconnection
 - Event filtering by type, session, agent, and tool
 - Live connection status indicators
 
 ### 2. Automatic Tool Call Control
+
 - PreToolUse events evaluated against existing approval rules
 - Automatic allow/deny responses based on rule matching
 - Integration with existing rule engine
 - Evaluation metrics and statistics
 
 ### 3. Comprehensive Event Display
+
 - Color-coded event types (PreToolUse: Blue, PostToolUse: Green, etc.)
 - Expandable JSON viewer for full event details
 - Tool execution duration tracking
@@ -135,6 +153,7 @@ PreToolUse Event → ConfigurationService.getActionForToolCall() → BlockingRes
 - Session grouping
 
 ### 4. Developer Experience
+
 - Simple installation script for Claude Code configuration
 - Comprehensive error handling and logging
 - Environment variable configuration
@@ -143,11 +162,13 @@ PreToolUse Event → ConfigurationService.getActionForToolCall() → BlockingRes
 ## Installation Instructions
 
 1. **Configure Hooks**:
+
    ```bash
    node scripts/install-hooks.js
    ```
 
 2. **Start CCO-MCP**:
+
    ```bash
    pnpm start
    ```
@@ -160,11 +181,13 @@ PreToolUse Event → ConfigurationService.getActionForToolCall() → BlockingRes
 ## Configuration
 
 ### Environment Variables
+
 - `CCO_SERVER_HOST` - CCO-MCP server host (default: localhost)
 - `CCO_SERVER_PORT` - CCO-MCP server port (default: 8660)
 - `CCO_SERVER_PROTOCOL` - Protocol (default: http)
 
 ### Hook Types Configured
+
 - **PreToolUse**: Tool call evaluation and blocking
 - **PostToolUse**: Tool execution completion tracking
 - **Notification**: General notifications from Claude Code
@@ -174,18 +197,21 @@ PreToolUse Event → ConfigurationService.getActionForToolCall() → BlockingRes
 ## Technical Details
 
 ### Event Storage
+
 - In-memory LRU cache with configurable size (default: 2000 events)
 - TTL-based cleanup (default: 7 days)
 - Automatic expired event removal
 - Memory-efficient design
 
 ### Rule Integration
+
 - Reuses existing `ConfigurationService` and approval rules
 - No changes required to existing rule configuration
 - PreToolUse events automatically evaluated
 - Support for all tool matching patterns (built-in and MCP tools)
 
 ### Performance
+
 - Non-blocking event processing
 - Efficient JSON parsing and validation
 - Minimal memory footprint
@@ -211,12 +237,14 @@ PreToolUse Event → ConfigurationService.getActionForToolCall() → BlockingRes
 ## Troubleshooting
 
 ### Common Issues
+
 1. **Bridge script not found**: Ensure CCO-MCP installation is complete
 2. **Connection refused**: Verify CCO-MCP server is running on correct port
 3. **No hook events**: Check Claude Code settings.json configuration
 4. **Permission denied**: Ensure bridge script is executable (`chmod +x`)
 
 ### Debugging
+
 - Bridge script logs to stderr for debugging
 - Server logs include comprehensive hook event information
 - UI displays connection status and error messages

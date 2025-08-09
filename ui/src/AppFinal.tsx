@@ -5,6 +5,7 @@ import { AuditLogList } from "./components/AuditLogList";
 import { StatusFilter } from "./components/StatusFilter";
 import { SearchBar } from "./components/SearchBar";
 import { AgentFilter } from "./components/AgentFilter";
+import { SourceFilter } from "./components/SourceFilter";
 import { Pagination } from "./components/Pagination";
 import { ToastContainer } from "./components/Toast";
 import { EmptyState } from "./components/EmptyState";
@@ -32,6 +33,9 @@ function AppFinal() {
     "ALL"
   );
   const [selectedAgent, setSelectedAgent] = useState<string | "ALL">("ALL");
+  const [selectedSource, setSelectedSource] = useState<"ALL" | "mcp" | "hook">(
+    "ALL"
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
@@ -62,17 +66,27 @@ function AppFinal() {
 
   // Check if filters are active
   const hasActiveFilters =
-    selectedState !== "ALL" || selectedAgent !== "ALL" || searchQuery !== "";
+    selectedState !== "ALL" ||
+    selectedAgent !== "ALL" ||
+    selectedSource !== "ALL" ||
+    searchQuery !== "";
 
-  // Filter and paginate entries
+  // Filter entries by source and paginate
   const { paginatedEntries, totalPages } = useMemo(() => {
+    let filtered = allEntries;
+
+    // Apply source filter
+    if (selectedSource !== "ALL") {
+      filtered = filtered.filter((entry) => entry.source === selectedSource);
+    }
+
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const endIndex = startIndex + ITEMS_PER_PAGE;
     return {
-      paginatedEntries: allEntries.slice(startIndex, endIndex),
-      totalPages: Math.ceil(allEntries.length / ITEMS_PER_PAGE),
+      paginatedEntries: filtered.slice(startIndex, endIndex),
+      totalPages: Math.ceil(filtered.length / ITEMS_PER_PAGE),
     };
-  }, [allEntries, currentPage]);
+  }, [allEntries, currentPage, selectedSource]);
 
   // Get unique agents for filter
   const uniqueAgents = useMemo(() => {
@@ -125,6 +139,7 @@ function AppFinal() {
   const clearFilters = useCallback(() => {
     setSelectedState("ALL");
     setSelectedAgent("ALL");
+    setSelectedSource("ALL");
     setSearchQuery("");
   }, []);
 
@@ -194,6 +209,7 @@ function AppFinal() {
                     [
                       selectedState !== "ALL",
                       selectedAgent !== "ALL",
+                      selectedSource !== "ALL",
                       searchQuery !== "",
                     ].filter(Boolean).length
                   }
@@ -236,10 +252,14 @@ function AppFinal() {
           {/* Filters */}
           {showFilters && (
             <div className="border-b border-gray-200 dark:border-gray-700 p-6 bg-gray-50 dark:bg-gray-900/50">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatusFilter
                   selectedState={selectedState}
                   onStateChange={setSelectedState}
+                />
+                <SourceFilter
+                  selectedSource={selectedSource}
+                  onSourceChange={setSelectedSource}
                 />
                 <AgentFilter
                   selectedAgent={selectedAgent}

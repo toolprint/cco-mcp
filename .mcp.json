@@ -3,9 +3,7 @@
     "git": {
       "type": "stdio",
       "command": "uvx",
-      "args": [
-        "mcp-server-git"
-      ]
+      "args": ["mcp-server-git"]
     },
     "context7": {
       "type": "http",

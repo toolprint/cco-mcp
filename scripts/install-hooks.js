@@ -2,19 +2,19 @@
 
 /**
  * Claude Code Hook Installation Script
- * 
+ *
  * This script configures Claude Code to use the CCO-MCP hook system.
  * It backs up existing configuration and adds hook configuration for all event types.
- * 
+ *
  * Usage: node install-hooks.js [--claude-dir ~/.claude] [--cco-path /path/to/cco-mcp]
  */
 
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
+const fs = require("fs");
+const path = require("path");
+const os = require("os");
 
 // Default paths
-const DEFAULT_CLAUDE_DIR = path.join(os.homedir(), '.claude');
+const DEFAULT_CLAUDE_DIR = path.join(os.homedir(), ".claude");
 const DEFAULT_CCO_PATH = process.cwd();
 
 // Command line argument parsing
@@ -28,16 +28,16 @@ function parseArgs() {
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    
-    if (arg === '--help' || arg === '-h') {
+
+    if (arg === "--help" || arg === "-h") {
       config.help = true;
-    } else if (arg === '--claude-dir' && i + 1 < args.length) {
+    } else if (arg === "--claude-dir" && i + 1 < args.length) {
       config.claudeDir = path.resolve(args[i + 1]);
       i++;
-    } else if (arg === '--cco-path' && i + 1 < args.length) {
+    } else if (arg === "--cco-path" && i + 1 < args.length) {
       config.ccoPath = path.resolve(args[i + 1]);
       i++;
-    } else if (arg.startsWith('--')) {
+    } else if (arg.startsWith("--")) {
       console.error(`Unknown option: ${arg}`);
       process.exit(1);
     }
@@ -93,11 +93,13 @@ function success(message) {
 
 // Verify CCO-MCP installation
 function verifyCCOInstallation(ccoPath) {
-  const bridgeScript = path.join(ccoPath, 'hooks', 'bridge.js');
-  
+  const bridgeScript = path.join(ccoPath, "hooks", "bridge.js");
+
   if (!fs.existsSync(bridgeScript)) {
     error(`Bridge script not found at: ${bridgeScript}`);
-    error('Make sure you are running this script from the CCO-MCP installation directory.');
+    error(
+      "Make sure you are running this script from the CCO-MCP installation directory."
+    );
     return false;
   }
 
@@ -107,7 +109,7 @@ function verifyCCOInstallation(ccoPath) {
     log(`Bridge script found and executable: ${bridgeScript}`);
   } catch (err) {
     warn(`Bridge script exists but may not be executable: ${bridgeScript}`);
-    warn('You may need to run: chmod +x hooks/bridge.js');
+    warn("You may need to run: chmod +x hooks/bridge.js");
   }
 
   return true;
@@ -128,7 +130,7 @@ function ensureClaudeDirectory(claudeDir) {
 function readSettings(settingsPath) {
   if (fs.existsSync(settingsPath)) {
     try {
-      const content = fs.readFileSync(settingsPath, 'utf8');
+      const content = fs.readFileSync(settingsPath, "utf8");
       const settings = JSON.parse(content);
       log(`Loaded existing settings from: ${settingsPath}`);
       return settings;
@@ -148,9 +150,9 @@ function backupSettings(settingsPath) {
     return null;
   }
 
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   const backupPath = `${settingsPath}.backup-${timestamp}`;
-  
+
   try {
     fs.copyFileSync(settingsPath, backupPath);
     success(`Backup created: ${backupPath}`);
@@ -164,19 +166,21 @@ function backupSettings(settingsPath) {
 // Generate hook configuration
 function generateHookConfig(bridgeScriptPath) {
   const hookConfig = {
-    "matcher": ".*",
-    "hooks": [{
-      "type": "command",
-      "command": `node "${bridgeScriptPath}"`
-    }]
+    matcher: ".*",
+    hooks: [
+      {
+        type: "command",
+        command: `node "${bridgeScriptPath}"`,
+      },
+    ],
   };
 
   return {
-    "PreToolUse": [hookConfig],
-    "PostToolUse": [hookConfig], 
-    "Notification": [hookConfig],
-    "Stop": [hookConfig],
-    "SubagentStop": [hookConfig]
+    PreToolUse: [hookConfig],
+    PostToolUse: [hookConfig],
+    Notification: [hookConfig],
+    Stop: [hookConfig],
+    SubagentStop: [hookConfig],
   };
 }
 
@@ -193,10 +197,10 @@ function mergeHookConfiguration(settings, hookConfig) {
   for (const [eventType, config] of Object.entries(hookConfig)) {
     if (settings.hooks[eventType]) {
       // Check if CCO-MCP hook already exists
-      const existingHook = settings.hooks[eventType].find(hook => 
-        hook.hooks?.some(h => h.command?.includes('bridge.js'))
+      const existingHook = settings.hooks[eventType].find((hook) =>
+        hook.hooks?.some((h) => h.command?.includes("bridge.js"))
       );
-      
+
       if (existingHook) {
         warn(`Hook for ${eventType} already exists, updating configuration`);
         // Update the existing hook
@@ -222,7 +226,7 @@ function mergeHookConfiguration(settings, hookConfig) {
 function writeSettings(settingsPath, settings) {
   try {
     const content = JSON.stringify(settings, null, 2);
-    fs.writeFileSync(settingsPath, content, 'utf8');
+    fs.writeFileSync(settingsPath, content, "utf8");
     success(`Updated settings written to: ${settingsPath}`);
     return true;
   } catch (err) {
@@ -240,7 +244,7 @@ async function installHooks() {
     return;
   }
 
-  log('Starting Claude Code hook installation...');
+  log("Starting Claude Code hook installation...");
   log(`Claude directory: ${config.claudeDir}`);
   log(`CCO-MCP path: ${config.ccoPath}`);
 
@@ -255,8 +259,8 @@ async function installHooks() {
   }
 
   // Paths
-  const settingsPath = path.join(config.claudeDir, 'settings.json');
-  const bridgeScriptPath = path.join(config.ccoPath, 'hooks', 'bridge.js');
+  const settingsPath = path.join(config.claudeDir, "settings.json");
+  const bridgeScriptPath = path.join(config.ccoPath, "hooks", "bridge.js");
 
   // Read existing settings
   const settings = readSettings(settingsPath);
@@ -268,16 +272,19 @@ async function installHooks() {
   if (fs.existsSync(settingsPath)) {
     const backupPath = backupSettings(settingsPath);
     if (!backupPath) {
-      warn('Failed to create backup, continuing anyway...');
+      warn("Failed to create backup, continuing anyway...");
     }
   }
 
   // Generate hook configuration
   const hookConfig = generateHookConfig(bridgeScriptPath);
-  log('Generated hook configuration for all event types');
+  log("Generated hook configuration for all event types");
 
   // Merge with existing settings
-  const { addedHooks, updatedHooks } = mergeHookConfiguration(settings, hookConfig);
+  const { addedHooks, updatedHooks } = mergeHookConfiguration(
+    settings,
+    hookConfig
+  );
 
   // Write updated settings
   if (!writeSettings(settingsPath, settings)) {
@@ -285,31 +292,33 @@ async function installHooks() {
   }
 
   // Report results
-  success('Hook installation completed successfully!');
-  
+  success("Hook installation completed successfully!");
+
   if (addedHooks.length > 0) {
-    success(`Added hooks for: ${addedHooks.join(', ')}`);
-  }
-  
-  if (updatedHooks.length > 0) {
-    success(`Updated hooks for: ${updatedHooks.join(', ')}`);
+    success(`Added hooks for: ${addedHooks.join(", ")}`);
   }
 
-  console.log('\nNext steps:');
-  console.log('1. Start CCO-MCP server: npm start or pnpm start');
-  console.log('2. Access the dashboard at: http://localhost:8660');
-  console.log('3. Configure approval rules in the Configuration tab');
-  console.log('4. Monitor hook events in the Hook Events tab');
-  console.log('\nThe hooks will now intercept tool calls and send them to CCO-MCP for evaluation.');
+  if (updatedHooks.length > 0) {
+    success(`Updated hooks for: ${updatedHooks.join(", ")}`);
+  }
+
+  console.log("\nNext steps:");
+  console.log("1. Start CCO-MCP server: npm start or pnpm start");
+  console.log("2. Access the dashboard at: http://localhost:8660");
+  console.log("3. Configure approval rules in the Configuration tab");
+  console.log("4. Monitor hook events in the Hook Events tab");
+  console.log(
+    "\nThe hooks will now intercept tool calls and send them to CCO-MCP for evaluation."
+  );
 }
 
 // Error handling
-process.on('uncaughtException', (error) => {
+process.on("uncaughtException", (error) => {
   error(`Uncaught exception: ${error.message}`);
   process.exit(1);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
+process.on("unhandledRejection", (reason, promise) => {
   error(`Unhandled rejection: ${reason}`);
   process.exit(1);
 });

@@ -95,3 +95,45 @@ export interface AuditLogEvent {
   entry: AuditLogEntry;
   previousState?: AuditLogState;
 }
+
+/**
+ * Extended audit entry for unified audit stream
+ * Supports both MCP and hook event sources
+ */
+export interface UnifiedAuditEntry extends AuditLogEntry {
+  /** Source of the audit entry */
+  source?: "mcp" | "hook";
+
+  /** Hook-specific fields */
+  hookEventId?: string;
+  sessionId?: string;
+
+  /** Metadata for tracking additional information */
+  metadata?: {
+    /** Whether we're waiting for user response to 'ask' */
+    waitingForUserResponse?: boolean;
+
+    /** The message shown to user for 'ask' behavior */
+    askMessage?: string;
+
+    /** Whether the decision was inferred (not explicit) */
+    inferredDecision?: boolean;
+
+    /** Method used for inference */
+    inferenceMethod?: "post-tool-use" | "timeout-no-execution";
+  };
+}
+
+/**
+ * Filter options for unified audit queries
+ */
+export interface UnifiedAuditFilter extends AuditLogFilter {
+  /** Filter by source */
+  source?: "mcp" | "hook" | "all";
+
+  /** Filter by inference status */
+  inferredOnly?: boolean;
+
+  /** Filter by session ID (for hook events) */
+  sessionId?: string;
+}

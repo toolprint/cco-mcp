@@ -77,21 +77,65 @@ export class ConfigurationService extends EventEmitter {
    * Check if auto-approval is enabled
    */
   isAutoApprovalEnabled(): boolean {
-    return this.config.approvals.enabled;
+    try {
+      if (!this.config) {
+        logger.warn("Configuration not loaded, auto-approval disabled");
+        return false;
+      }
+
+      if (!this.config.approvals) {
+        logger.warn("Approvals configuration missing, auto-approval disabled");
+        return false;
+      }
+
+      return this.config.approvals.enabled;
+    } catch (error) {
+      logger.error(
+        { error, config: this.config },
+        "Error checking auto-approval status, defaulting to disabled"
+      );
+      return false;
+    }
   }
 
   /**
    * Get timeout configuration
    */
   getTimeoutMs(): number {
-    return this.config.approvals.timeout.duration;
+    try {
+      if (!this.config?.approvals?.timeout) {
+        logger.warn("Timeout configuration missing, using default 30 seconds");
+        return 30000;
+      }
+
+      return this.config.approvals.timeout.duration;
+    } catch (error) {
+      logger.error(
+        { error },
+        "Error getting timeout configuration, defaulting to 30 seconds"
+      );
+      return 30000;
+    }
   }
 
   /**
    * Get timeout default action
    */
   getTimeoutAction(): "approve" | "deny" {
-    return this.config.approvals.timeout.defaultAction;
+    try {
+      if (!this.config?.approvals?.timeout) {
+        logger.warn("Timeout configuration missing, defaulting to deny");
+        return "deny";
+      }
+
+      return this.config.approvals.timeout.defaultAction;
+    } catch (error) {
+      logger.error(
+        { error },
+        "Error getting timeout action, defaulting to deny"
+      );
+      return "deny";
+    }
   }
 
   /**
@@ -144,21 +188,55 @@ export class ConfigurationService extends EventEmitter {
     rule?: ApprovalRule;
     timeout?: number;
   } {
-    const matchResult = this.matchRules(toolCall);
+    try {
+      logger.debug({ toolCall }, "Evaluating tool call for action");
 
-    if (matchResult.matched && matchResult.rule) {
+      const matchResult = this.matchRules(toolCall);
+
+      if (matchResult.matched && matchResult.rule) {
+        logger.debug(
+          {
+            ruleName: matchResult.rule.name,
+            action: matchResult.rule.action,
+            toolName: toolCall.toolName,
+          },
+          "Rule matched for tool call"
+        );
+
+        return {
+          action: matchResult.rule.action,
+          rule: matchResult.rule,
+          timeout: matchResult.rule.timeoutOverride || this.getTimeoutMs(),
+        };
+      }
+
+      // No rule matched, use default action
+      const defaultAction = this.config?.approvals?.defaultAction || "review";
+      logger.debug(
+        { defaultAction, toolName: toolCall.toolName },
+        "No rule matched, using default action"
+      );
+
       return {
-        action: matchResult.rule.action,
-        rule: matchResult.rule,
-        timeout: matchResult.rule.timeoutOverride || this.getTimeoutMs(),
+        action: defaultAction,
+        timeout: this.getTimeoutMs(),
+      };
+    } catch (error) {
+      logger.error(
+        {
+          error,
+          toolCall,
+          configExists: !!this.config,
+          approvalsExists: !!this.config?.approvals,
+        },
+        "Error in getActionForToolCall, defaulting to review"
+      );
+
+      return {
+        action: "review",
+        timeout: 30000, // 30 seconds default
       };
     }
-
-    // No rule matched, use default action
-    return {
-      action: this.config.approvals.defaultAction,
-      timeout: this.getTimeoutMs(),
-    };
   }
 
   /**

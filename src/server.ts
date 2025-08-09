@@ -66,6 +66,10 @@ server.tool(
         input,
         agent_identity
       );
+
+      // Add source metadata for unified audit stream
+      (entry as any).source = "mcp";
+
       logger.info(
         { entryId: entry.id },
         "Created audit log entry for approval request"

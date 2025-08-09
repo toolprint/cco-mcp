@@ -15,6 +15,21 @@ export interface AuditLogEntry {
   decision_by?: string;
   decision_time?: Date | string;
   denied_by_timeout?: boolean;
+
+  // Unified audit stream fields
+  source?: "mcp" | "hook";
+  hookEventId?: string;
+  sessionId?: string;
+  metadata?: {
+    waitingForUserResponse?: boolean;
+    askMessage?: string;
+    inferredDecision?: boolean;
+    inferenceMethod?: "post-tool-use" | "timeout-no-execution";
+  };
+  matched_rule?: {
+    id: string;
+    name: string;
+  };
 }
 
 export interface AuditLogQueryParams {

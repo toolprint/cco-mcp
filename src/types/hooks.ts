@@ -11,25 +11,25 @@ export interface HookEvent {
   transcript_path: string;
   cwd: string;
   hook_event_name: string;
-  
+
   // Tool-related fields (for PreToolUse, PostToolUse)
   tool_name?: string;
   tool_input?: Record<string, any>;
-  tool_response?: Record<string, any>;
-  
+  tool_response?: string | Record<string, any>;
+
   // Notification fields
   message?: string;
-  
+
   // Stop/SubagentStop fields
   stop_hook_active?: boolean;
-  
+
   // UserPromptSubmit fields
   prompt?: string;
-  
+
   // PreCompact fields
   trigger?: string;
   custom_instructions?: string;
-  
+
   // SessionStart fields
   source?: string;
 }
@@ -37,13 +37,21 @@ export interface HookEvent {
 /**
  * Hook event types supported by Claude Code
  */
-export type HookEventType = 'PreToolUse' | 'PostToolUse' | 'Notification' | 'Stop' | 'SubagentStop' | 'UserPromptSubmit' | 'PreCompact' | 'SessionStart';
+export type HookEventType =
+  | "PreToolUse"
+  | "PostToolUse"
+  | "Notification"
+  | "Stop"
+  | "SubagentStop"
+  | "UserPromptSubmit"
+  | "PreCompact"
+  | "SessionStart";
 
 /**
  * Blocking response for PreToolUse events
  */
 export interface BlockingResponse {
-  behavior: 'allow' | 'deny' | 'ask';
+  behavior: "allow" | "deny" | "ask";
   message: string;
 }
 
@@ -76,50 +84,53 @@ export interface HookEventFilters {
 export interface StoredHookEvent {
   /** Unique identifier for the event */
   id: string;
-  
+
   /** When the event was received by CCO-MCP */
   receivedAt: Date;
-  
+
   /** Evaluation result for PreToolUse events */
   evaluation?: HookEvaluationResult;
-  
+
   /** Time-to-live for event cleanup */
   expiresAt: Date;
 
   /** Event type */
   type: string; // hook_event_name from Claude Code
-  
+
   /** Session ID */
   sessionId: string; // session_id from Claude Code
-  
+
   /** Timestamp (generated since Claude Code doesn't send one) */
   timestamp: string;
-  
+
   /** Tool name (for PreToolUse and PostToolUse) */
   tool_name?: string;
-  
+
   /** Tool input (for PreToolUse and PostToolUse) */
   tool_input?: Record<string, any>;
-  
+
   /** Tool response (for PostToolUse) */
-  tool_response?: Record<string, any>;
-  
+  tool_response?: string | Record<string, any>;
+
   /** Message (for Notification events) */
   message?: string;
-  
+
   /** Reason (for Stop events) */
   reason?: string;
-  
+
   /** Claude Code specific fields */
   transcript_path?: string;
   cwd?: string;
-  
+
   /** Additional fields for other event types */
   prompt?: string;
   trigger?: string;
   custom_instructions?: string;
   source?: string;
   stop_hook_active?: boolean;
+
+  /** Audit log integration */
+  auditEntryId?: string;
 }
 
 /**
@@ -135,7 +146,10 @@ export interface HookEventQueryResult {
 /**
  * Hook service event types for SSE streaming
  */
-export type HookServiceEventType = 'new-hook-event' | 'hook-evaluation' | 'hook-cleanup';
+export type HookServiceEventType =
+  | "new-hook-event"
+  | "hook-evaluation"
+  | "hook-cleanup";
 
 /**
  * Hook service event payload

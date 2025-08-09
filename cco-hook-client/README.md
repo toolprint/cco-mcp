@@ -16,24 +16,26 @@ High-performance Rust-based hook client for CCO-MCP (Claude Code Oversight). Thi
 
 ## Performance Comparison
 
-| Metric | Node.js Bridge | Rust Client | Improvement |
-|--------|----------------|-------------|-------------|
-| Startup Time | ~200ms | ~5ms | **40x faster** |
-| Memory Usage | ~30MB | ~2-5MB | **6-10x lower** |
-| Binary Size | N/A (runtime) | ~8-12MB | **Self-contained** |
-| Dependencies | Node.js + npm | None | **Zero deps** |
-| CPU Usage | Higher (V8 overhead) | Minimal | **Native performance** |
+| Metric       | Node.js Bridge       | Rust Client | Improvement            |
+| ------------ | -------------------- | ----------- | ---------------------- |
+| Startup Time | ~200ms               | ~5ms        | **40x faster**         |
+| Memory Usage | ~30MB                | ~2-5MB      | **6-10x lower**        |
+| Binary Size  | N/A (runtime)        | ~8-12MB     | **Self-contained**     |
+| Dependencies | Node.js + npm        | None        | **Zero deps**          |
+| CPU Usage    | Higher (V8 overhead) | Minimal     | **Native performance** |
 
 ## Quick Start
 
 ### Installation
 
 #### Option 1: Quick Install Script (Recommended)
+
 ```bash
 curl -fsSL https://get.cco-mcp.com/install.sh | sh
 ```
 
 #### Option 2: Manual Download
+
 ```bash
 # Download the binary for your platform
 wget https://github.com/toolprint/cco-mcp/releases/latest/download/cco-hook-client-linux-x86_64
@@ -47,6 +49,7 @@ sudo mv configure-claude-linux-x86_64 /usr/local/bin/configure-claude
 ```
 
 #### Option 3: Build from Source
+
 ```bash
 # Clone the repository
 git clone https://github.com/toolprint/cco-mcp.git
@@ -63,6 +66,7 @@ sudo cp target/release/configure-claude /usr/local/bin/
 ### Configuration
 
 #### Automatic Configuration
+
 ```bash
 # Configure Claude Code automatically
 configure-claude
@@ -72,21 +76,35 @@ configure-claude --server-url http://localhost:8660 --backup
 ```
 
 #### Manual Configuration
+
 Add to your Claude Code `settings.json`:
+
 ```json
 {
   "hooks": {
-    "PreToolUse": [{
-      "matcher": ".*",
-      "hooks": [{
-        "type": "command",
-        "command": "cco-hook-client"
-      }]
-    }],
-    "PostToolUse": [/* same as above */],
-    "Notification": [/* same as above */],
-    "Stop": [/* same as above */],
-    "SubagentStop": [/* same as above */]
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cco-hook-client"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      /* same as above */
+    ],
+    "Notification": [
+      /* same as above */
+    ],
+    "Stop": [
+      /* same as above */
+    ],
+    "SubagentStop": [
+      /* same as above */
+    ]
   }
 }
 ```
@@ -112,6 +130,7 @@ cco-hook-client --version
 ## Configuration
 
 ### Configuration Sources (in order of priority)
+
 1. Command line arguments
 2. Environment variables
 3. `./cco-hook-client.toml`
@@ -119,6 +138,7 @@ cco-hook-client --version
 5. Default values
 
 ### Environment Variables
+
 ```bash
 # Server configuration
 export CCO_SERVER_HOST=localhost
@@ -138,6 +158,7 @@ export CCO_LOG_FILE=/var/log/cco-hook-client.log
 ```
 
 ### TOML Configuration File
+
 ```toml
 [server]
 host = "localhost"
@@ -163,6 +184,7 @@ max_files = 5
 ```
 
 Generate a default config file:
+
 ```bash
 cco-hook-client config --output my-config.toml
 ```
@@ -191,10 +213,12 @@ OPTIONS:
 ## Development
 
 ### Prerequisites
+
 - Rust 1.70+ (MSRV)
 - Cargo
 
 ### Building
+
 ```bash
 # Development build
 cargo build
@@ -213,6 +237,7 @@ cargo build --target x86_64-pc-windows-msvc
 ```
 
 ### Testing
+
 ```bash
 # Unit tests
 cargo test
@@ -226,6 +251,7 @@ echo '{"type":"PreToolUse","sessionId":"test","timestamp":"2024-01-01T00:00:00Z"
 ```
 
 ### Linting and Formatting
+
 ```bash
 # Check formatting
 cargo fmt --check
@@ -275,6 +301,7 @@ Claude Code → stdin (JSON) → Event Parser → HTTP Client → CCO-MCP Server
 ### Common Issues
 
 #### Binary Not Found
+
 ```bash
 # Check if binary is in PATH
 which cco-hook-client
@@ -284,6 +311,7 @@ export PATH="/usr/local/bin:$PATH"
 ```
 
 #### Permission Denied
+
 ```bash
 # Make binary executable
 chmod +x /path/to/cco-hook-client
@@ -293,6 +321,7 @@ sudo chmod +x /usr/local/bin/cco-hook-client
 ```
 
 #### Server Connection Failed
+
 ```bash
 # Test server connectivity
 cco-hook-client --health-check
@@ -305,6 +334,7 @@ cco-hook-client validate
 ```
 
 #### Claude Code Not Using Hook Client
+
 ```bash
 # Verify settings.json configuration
 cat ~/.claude/settings.json | jq '.hooks'
@@ -314,6 +344,7 @@ configure-claude --force
 ```
 
 ### Debug Mode
+
 ```bash
 # Enable debug logging
 cco-hook-client --log-level debug
@@ -328,19 +359,25 @@ cco-hook-client --log-level debug 2> debug.log
 ### Performance Issues
 
 #### Startup Time
+
 The binary should start in <10ms. If slower:
+
 - Check if binary is on local disk (not network mount)
 - Verify sufficient RAM available
 - Try release build instead of debug build
 
 #### Memory Usage
+
 Should use <5MB RAM. If higher:
+
 - Check for memory leaks in logs
 - Verify connection pooling is working
 - Monitor with `ps` or `top`
 
 #### Network Latency
+
 For high-latency networks:
+
 - Increase `timeout_ms` in configuration
 - Reduce `max_retries` to fail faster
 - Use connection keep-alive (enabled by default)
@@ -348,21 +385,26 @@ For high-latency networks:
 ## Migration from Node.js Bridge
 
 ### Compatibility
+
 The Rust client is a drop-in replacement:
+
 - ✅ Same HTTP API contract with CCO-MCP server
 - ✅ Identical JSON event format
 - ✅ Same Claude Code settings.json structure
 - ✅ Same environment variables
 
 ### Migration Steps
+
 1. **Install Rust client**: Use installation script or manual download
-2. **Test functionality**: Run `cco-hook-client --dry-run` 
+2. **Test functionality**: Run `cco-hook-client --dry-run`
 3. **Update Claude settings**: Run `configure-claude --backup`
 4. **Verify operation**: Monitor CCO-MCP dashboard for events
 5. **Remove Node.js version**: Clean up old bridge.js file
 
 ### Rollback Plan
+
 If issues occur:
+
 1. Restore settings backup: `cp settings.json.backup-* settings.json`
 2. Reinstall Node.js bridge: Follow original setup instructions
 3. Report issue: Create GitHub issue with logs
@@ -370,6 +412,7 @@ If issues occur:
 ## Contributing
 
 ### Development Setup
+
 ```bash
 # Fork and clone the repository
 git clone https://github.com/your-fork/cco-mcp.git
@@ -388,6 +431,7 @@ git push origin feature/your-feature
 ```
 
 ### Code Style
+
 - Follow Rust standard formatting (`cargo fmt`)
 - Address all clippy warnings (`cargo clippy`)
 - Add tests for new functionality
@@ -395,7 +439,9 @@ git push origin feature/your-feature
 - Use conventional commit messages
 
 ### Release Process
+
 Releases are automated via GitHub Actions:
+
 1. Create and push a version tag: `git tag v0.1.0 && git push origin v0.1.0`
 2. GitHub Actions builds cross-platform binaries
 3. Creates release with downloadable assets

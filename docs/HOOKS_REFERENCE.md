@@ -30,6 +30,7 @@ Claude Code hooks provide a powerful mechanism to intercept and control various 
 ## Hook Event Types
 
 ### 1. PreToolUse
+
 Runs before tool execution. Can block or modify tool calls.
 
 **Matchers**: Tool names (e.g., `Bash`, `Edit`, `Read`, `mcp__*`)
@@ -37,6 +38,7 @@ Runs before tool execution. Can block or modify tool calls.
 **Blocking**: Yes - supports "allow", "deny", "ask" responses
 
 **Fields**:
+
 ```json
 {
   "session_id": "string",
@@ -49,6 +51,7 @@ Runs before tool execution. Can block or modify tool calls.
 ```
 
 ### 2. PostToolUse
+
 Runs after successful tool execution.
 
 **Matchers**: Same as PreToolUse
@@ -56,6 +59,7 @@ Runs after successful tool execution.
 **Blocking**: Optional - can provide feedback or log results
 
 **Fields**:
+
 ```json
 {
   "session_id": "string",
@@ -69,6 +73,7 @@ Runs after successful tool execution.
 ```
 
 ### 3. UserPromptSubmit
+
 Runs before processing user prompts. Can inject context or block prompts.
 
 **Matchers**: `.*` (all prompts)
@@ -76,6 +81,7 @@ Runs before processing user prompts. Can inject context or block prompts.
 **Blocking**: Yes - can modify or block prompt processing
 
 **Fields**:
+
 ```json
 {
   "session_id": "string",
@@ -87,6 +93,7 @@ Runs before processing user prompts. Can inject context or block prompts.
 ```
 
 ### 4. Notification
+
 Triggered during various system events (e.g., permission requests).
 
 **Matchers**: Event types
@@ -94,6 +101,7 @@ Triggered during various system events (e.g., permission requests).
 **Blocking**: No - informational only
 
 **Fields**:
+
 ```json
 {
   "session_id": "string",
@@ -105,6 +113,7 @@ Triggered during various system events (e.g., permission requests).
 ```
 
 ### 5. Stop
+
 Runs when main agent is about to stop.
 
 **Matchers**: `.*`
@@ -112,6 +121,7 @@ Runs when main agent is about to stop.
 **Blocking**: Yes - can prevent stopping or provide continuation
 
 **Fields**:
+
 ```json
 {
   "session_id": "string",
@@ -123,6 +133,7 @@ Runs when main agent is about to stop.
 ```
 
 ### 6. SubagentStop
+
 Runs when a sub-agent is about to stop.
 
 **Matchers**: Agent names
@@ -130,6 +141,7 @@ Runs when a sub-agent is about to stop.
 **Blocking**: Yes - can control sub-agent lifecycle
 
 **Fields**:
+
 ```json
 {
   "session_id": "string",
@@ -141,6 +153,7 @@ Runs when a sub-agent is about to stop.
 ```
 
 ### 7. PreCompact
+
 Runs before context compaction.
 
 **Matchers**: `manual`, `auto`
@@ -148,6 +161,7 @@ Runs before context compaction.
 **Blocking**: Yes - can prevent or modify compaction
 
 **Fields**:
+
 ```json
 {
   "session_id": "string",
@@ -160,6 +174,7 @@ Runs before context compaction.
 ```
 
 ### 8. SessionStart
+
 Triggered at session initialization.
 
 **Matchers**: `startup`, `resume`, `clear`
@@ -167,6 +182,7 @@ Triggered at session initialization.
 **Blocking**: No - initialization hook
 
 **Fields**:
+
 ```json
 {
   "session_id": "string",
@@ -184,6 +200,7 @@ Triggered at session initialization.
 CCO-MCP must return specific JSON responses for PreToolUse events:
 
 #### Allow Response
+
 ```json
 {
   "behavior": "allow",
@@ -192,6 +209,7 @@ CCO-MCP must return specific JSON responses for PreToolUse events:
 ```
 
 #### Deny Response
+
 ```json
 {
   "behavior": "deny",
@@ -200,6 +218,7 @@ CCO-MCP must return specific JSON responses for PreToolUse events:
 ```
 
 #### Ask Response (Interactive Approval)
+
 ```json
 {
   "behavior": "ask",
@@ -218,6 +237,7 @@ Hook commands must use specific exit codes:
 - **Other**: Non-blocking error - log and continue
 
 ### Current Implementation Gap
+
 ```rust
 // Current (incorrect)
 process::exit(1); // Generic error
@@ -249,22 +269,26 @@ let project_dir = std::env::var("CLAUDE_PROJECT_DIR")
 MCP (Model Context Protocol) tools follow a specific naming convention:
 
 ### Format
+
 ```
 mcp__<server_name>__<tool_name>
 ```
 
 ### Examples
+
 - `mcp__memory__create_entities`
 - `mcp__git__commit`
 - `mcp__filesystem__read_file`
 
 ### Validation Requirements
+
 1. Must start with `mcp__`
 2. Server name cannot contain `__`
 3. Tool name is optional but recommended
 4. Case-sensitive matching
 
 ### Current Implementation
+
 ```rust
 // Parsing MCP tool names
 let parts = tool_name.split("__").collect::<Vec<_>>();
@@ -280,12 +304,15 @@ if parts.len() >= 2 && parts[0] == "mcp" {
 Sub-agents are separate Claude instances spawned for specific tasks. Hooks can control their lifecycle:
 
 ### Stop Hook Behavior
+
 When `stop_hook_active` is true:
+
 1. Hook receives Stop/SubagentStop event
 2. Hook can return blocking response to prevent termination
 3. Hook can provide continuation instructions
 
 ### Example Flow
+
 ```
 1. User: "Stop"
 2. Claude -> Hook: {"hook_event_name": "Stop", "stop_hook_active": true}
@@ -296,42 +323,44 @@ When `stop_hook_active` is true:
 ## Complete Event Schemas
 
 ### Common Fields (All Events)
+
 ```typescript
 interface BaseHookEvent {
-  session_id: string;          // Unique session identifier
-  transcript_path: string;     // Path to session transcript
-  cwd: string;                // Current working directory
-  hook_event_name: string;     // Event type
+  session_id: string; // Unique session identifier
+  transcript_path: string; // Path to session transcript
+  cwd: string; // Current working directory
+  hook_event_name: string; // Event type
 }
 ```
 
 ### Event-Specific Fields
+
 ```typescript
 // PreToolUse & PostToolUse
 interface ToolEvent extends BaseHookEvent {
-  tool_name: string;           // Tool being executed
-  tool_input: object;          // Tool parameters
-  tool_response?: object;      // Tool output (PostToolUse only)
+  tool_name: string; // Tool being executed
+  tool_input: object; // Tool parameters
+  tool_response?: object; // Tool output (PostToolUse only)
 }
 
 // UserPromptSubmit
 interface PromptEvent extends BaseHookEvent {
-  prompt: string;              // User's input
+  prompt: string; // User's input
 }
 
 // Notification
 interface NotificationEvent extends BaseHookEvent {
-  message: string;             // Notification content
+  message: string; // Notification content
 }
 
 // Stop & SubagentStop
 interface StopEvent extends BaseHookEvent {
-  stop_hook_active: boolean;   // Whether stop can be prevented
+  stop_hook_active: boolean; // Whether stop can be prevented
 }
 
 // PreCompact
 interface CompactEvent extends BaseHookEvent {
-  trigger: "manual" | "auto";  // Compaction trigger
+  trigger: "manual" | "auto"; // Compaction trigger
   custom_instructions?: string; // Additional instructions
 }
 
@@ -345,13 +374,15 @@ interface SessionStartEvent extends BaseHookEvent {
 
 ### 1. Missing "ask" Behavior Support
 
-**Current**: 
+**Current**:
+
 ```typescript
 case 'review':
   behavior = 'allow'; // Incorrect fallback
 ```
 
 **Required**:
+
 ```typescript
 case 'review':
   behavior = 'ask'; // Trigger interactive approval
@@ -360,11 +391,13 @@ case 'review':
 ### 2. Incomplete Event Type Support
 
 **Missing Events**:
+
 - UserPromptSubmit
 - PreCompact
 - SessionStart
 
 **Required Changes**:
+
 1. Add event type definitions
 2. Update validation logic
 3. Add UI components for display
@@ -389,23 +422,27 @@ case 'review':
 ### For CCO-MCP Users
 
 1. **Update Configuration**:
+
    ```json
    {
      "approvals": {
-       "rules": [{
-         "action": "review", // Will trigger "ask" behavior
-         "match": {
-           "tool": {
-             "type": "builtin",
-             "toolName": "Bash"
+       "rules": [
+         {
+           "action": "review", // Will trigger "ask" behavior
+           "match": {
+             "tool": {
+               "type": "builtin",
+               "toolName": "Bash"
+             }
            }
          }
-       }]
+       ]
      }
    }
    ```
 
 2. **Handle New Event Types**:
+
    - Monitor UserPromptSubmit for prompt injection
    - Use PreCompact for context management
    - Track SessionStart for analytics
@@ -420,6 +457,7 @@ case 'review':
 ### For Developers
 
 1. **Update Event Handlers**:
+
    ```rust
    match event.hook_event_name.as_str() {
      "UserPromptSubmit" => handle_prompt_submit(event),
@@ -430,6 +468,7 @@ case 'review':
    ```
 
 2. **Implement Ask Flow**:
+
    ```rust
    impl BlockingResponse {
      pub fn ask(message: String) -> Self {
@@ -453,24 +492,28 @@ case 'review':
 ## Best Practices
 
 ### 1. Security
+
 - Always validate tool inputs
 - Sanitize file paths
 - Implement rate limiting
 - Log all decisions for audit
 
 ### 2. Performance
+
 - Use 60-second timeout
 - Cache approval decisions
 - Minimize processing time
 - Handle errors gracefully
 
 ### 3. User Experience
+
 - Provide clear denial messages
 - Use "ask" for sensitive operations
 - Log context for debugging
 - Support undo/rollback
 
 ### 4. Integration
+
 - Test all event types
 - Handle edge cases
 - Document custom rules
@@ -481,16 +524,19 @@ case 'review':
 ### Common Issues
 
 1. **Hook Not Triggering**
+
    - Check Claude Code settings.json
    - Verify binary path is absolute
    - Ensure executable permissions
 
 2. **Wrong Exit Codes**
+
    - Exit 2 for blocking errors only
    - Exit 0 for success
    - Exit 1 for non-blocking errors
 
 3. **Missing Events**
+
    - Update to latest Claude Code
    - Check event type spelling
    - Verify matcher patterns

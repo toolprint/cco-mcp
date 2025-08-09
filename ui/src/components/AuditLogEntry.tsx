@@ -11,6 +11,8 @@ import {
   Server,
   UserCircle,
   Shield,
+  Info,
+  Webhook,
 } from "lucide-react";
 import type { AuditLogEntry as AuditLogEntryType } from "../types/audit";
 import { Card, CardContent } from "./ui/card";
@@ -19,6 +21,7 @@ import { Button } from "./ui/button";
 import { JsonViewer } from "./ui/json-viewer";
 import { cn } from "../lib/utils";
 import { formatDuration, formatUserIdentity } from "../lib/format";
+import { Tooltip } from "./ui/tooltip";
 
 interface AuditLogEntryProps {
   entry: AuditLogEntryType;
@@ -176,6 +179,21 @@ export const AuditLogEntry: React.FC<AuditLogEntryProps> = ({
                           </div>
                         );
                       })()}
+                    {/* Matched rule info */}
+                    {entry.matched_rule && (
+                      <div className="flex items-center gap-2">
+                        <Shield className="h-3 w-3 text-blueprint-500" />
+                        <span className="text-gray-600 dark:text-gray-400">
+                          Rule:
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className="text-xs border-blueprint-300 text-blueprint-700 dark:border-blueprint-600 dark:text-blueprint-400"
+                        >
+                          {entry.matched_rule.name}
+                        </Badge>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -183,10 +201,53 @@ export const AuditLogEntry: React.FC<AuditLogEntryProps> = ({
 
             {/* Right side - Status badge and buttons */}
             <div className="flex flex-col items-end gap-3">
-              <div className="flex items-start gap-2">
+              <div className="flex items-start gap-2 flex-wrap">
                 <Badge variant={state.variant} className="text-xs">
                   {state.label}
                 </Badge>
+                {/* Source badge */}
+                {entry.source && (
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-xs",
+                      entry.source === "hook"
+                        ? "border-purple-300 text-purple-700 dark:border-purple-600 dark:text-purple-400"
+                        : "border-blue-300 text-blue-700 dark:border-blue-600 dark:text-blue-400"
+                    )}
+                  >
+                    {entry.source === "hook" ? (
+                      <Webhook className="h-3 w-3 mr-1" />
+                    ) : (
+                      <Server className="h-3 w-3 mr-1" />
+                    )}
+                    {entry.source === "hook" ? "Hook" : "MCP"}
+                  </Badge>
+                )}
+                {/* Inference indicator */}
+                {entry.metadata?.inferredDecision && (
+                  <Tooltip
+                    content={`Decision inferred from ${entry.metadata.inferenceMethod === "post-tool-use" ? "tool execution" : "timeout (no execution)"}`}
+                  >
+                    <Badge
+                      variant="outline"
+                      className="text-xs border-gray-300 text-gray-600 dark:border-gray-600 dark:text-gray-400"
+                    >
+                      <Info className="h-3 w-3 mr-1" />
+                      Inferred
+                    </Badge>
+                  </Tooltip>
+                )}
+                {/* Ask indicator */}
+                {entry.metadata?.waitingForUserResponse && (
+                  <Badge
+                    variant="outline"
+                    className="text-xs border-amber-300 text-amber-700 dark:border-amber-600 dark:text-amber-400"
+                  >
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    User Decision Pending
+                  </Badge>
+                )}
                 {isExpired && (
                   <Badge
                     variant="outline"
