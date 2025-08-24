@@ -253,3 +253,41 @@ With these modifications, the migration plan becomes:
 3. Update migration plan with revised timeline
 4. Create simple SQLite schema migration strategy
 5. Document rollback procedures for each phase
+
+## Post-Review Update: Storage Architecture Revision
+
+### Critical Re-evaluation (After User Feedback)
+
+After further discussion, we've made a fundamental architectural revision regarding storage:
+
+**Original Plan**: SQLite with ORM for persistence
+**Revised Plan**: Document-oriented storage without ORM
+
+### Rationale for Change
+
+1. **Zero Relational Requirements**: Analysis revealed no JOINs, foreign keys, or cross-entity transactions
+2. **Document-Oriented Data Model**: All entities (Audit Entries, Rules, Hook Events) are naturally documents
+3. **ORM Complexity**: Session management, lazy loading, and N+1 problems add unnecessary complexity
+4. **Progressive Enhancement Path**: Memory → TinyDB → Redis provides smoother scaling
+
+### New Storage Strategy
+
+**Phase 1**: Pure in-memory storage (no persistence for observe-only)
+```python
+class InMemoryAuditStorage:
+    def __init__(self, max_entries: int = 10000):
+        self.entries = OrderedDict()  # Simple, fast, sufficient
+```
+
+**Phase 2**: TinyDB for file-based persistence
+**Phase 3**: Redis with RedisJSON for production
+**Future**: MongoDB/DynamoDB based on scale needs
+
+### Benefits of Document Approach
+
+1. **Simplicity**: No ORM boilerplate, natural Pydantic integration
+2. **Performance**: No JOIN overhead, efficient document operations
+3. **Flexibility**: Schema evolution without migrations
+4. **Developer Experience**: Intuitive API without session management
+
+This revision aligns better with our prototype-first approach while providing a clearer path to production scalability. See [Persistence Strategy Revision](./persistence_revisions.md) for detailed analysis.

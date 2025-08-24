@@ -9,8 +9,8 @@ This document outlines the comprehensive migration plan for transitioning the cc
 **Risk Level**: Low-Medium (reduced through architectural improvements)
 
 **Key Improvements Based on Review**:
-- SQLite persistence added for data durability
-- Atomic state management for race condition prevention
+- Document-oriented storage progression (Memory → TinyDB → Redis)
+- Atomic state management via optimistic locking (no ORM)
 - Simplified Phase 4 for prototype appropriateness
 - Resilience patterns for external service failures
 
@@ -20,7 +20,7 @@ This document outlines the comprehensive migration plan for transitioning the cc
 - **Purpose**: Manual approval workflow for Claude Code tool calls
 - **Key Features**: Human-in-the-loop approvals, real-time SSE updates, rule-based auto-approval
 - **Data Flow**: Tool call → Rule evaluation → Manual review (if needed) → Approve/Deny
-- **Storage**: ~~In-memory with TTL-based expiration~~ → SQLite with in-memory cache (improved)
+- **Storage**: In-memory with TTL-based expiration (Phase 1) → Document stores (Phase 2+)
 - **UI**: React dashboard for audit logs and configuration management
 
 ### Superego-MCP Architecture  
@@ -60,7 +60,7 @@ This document outlines the comprehensive migration plan for transitioning the cc
 - ✅ View audit history of AI-made decisions
 - ✅ Real-time monitoring via SSE
 - ✅ Filter and search audit entries
-- ✅ **NEW**: SQLite persistence with in-memory cache
+- ✅ Pure in-memory storage (no persistence needed for observe-only)
 - ❌ No manual approve/deny (UI buttons disabled)
 - ❌ No configuration changes
 
@@ -158,15 +158,17 @@ class RuleEvaluator(ABC):
 
 ### Architectural Improvements
 
-1. **Persistence Layer**: SQLite database with in-memory LRU cache
-   - Survives restarts
-   - Optimistic locking with version fields
-   - WAL mode for better concurrency
+1. **Storage Progression**: Document-oriented storage evolution
+   - Phase 1: Pure in-memory (no persistence for observe-only)
+   - Phase 2: TinyDB for file-based document storage
+   - Phase 3: Redis with RedisJSON for production
+   - Future: MongoDB/DynamoDB based on scale
 
-2. **Atomic State Management**: Asyncio locks and database transactions
-   - Prevents race conditions in concurrent approvals
+2. **Atomic State Management**: Document-level ACID without ORM
+   - Optimistic locking with version fields
+   - Document-level locks for critical sections
    - Idempotency keys for request deduplication
-   - Version-based optimistic locking
+   - No ORM session management complexity
 
 3. **Resilience Patterns**: Circuit breaker and retry logic
    - Circuit breaker for AI service calls
@@ -453,12 +455,12 @@ class AuditEntryWithAssistance(BaseModel):
 ## Future Enhancements
 
 ### Post-Migration Improvements
-1. ~~**Persistent Storage**~~ ✅ Implemented in Phase 1 with SQLite
-2. **Advanced Analytics**: Decision pattern analysis and reporting
+1. **Progressive Storage Enhancement**: TinyDB (Phase 2) → Redis (Phase 3) → MongoDB (Future)
+2. **Advanced Analytics**: ETL to ClickHouse for analytical queries
 3. **Multi-tenant Support**: Separate configurations per organization/team
 4. **Integration Expansion**: Support for additional Claude Code hook types
 5. **Machine Learning**: Upgrade from basic pattern matching to ML models
-6. **Production Hardening**: PostgreSQL migration, distributed locking with Redis
+6. **Production Hardening**: Redis cluster, MongoDB sharding for scale
 7. **Advanced AI Features**: Risk analysis, semantic similarity matching
 
 ### Monitoring & Observability
@@ -469,11 +471,12 @@ class AuditEntryWithAssistance(BaseModel):
 
 ## Conclusion
 
-This **revised** migration plan incorporates critical architectural improvements based on thorough review, providing a more robust roadmap for transitioning from cco-mcp to superego-mcp backend. The enhancements address key concerns around persistence, concurrency, resilience, and prototype-appropriate complexity.
+This **revised** migration plan embraces a document-oriented architecture that better matches our data model's inherent structure. By avoiding unnecessary relational database complexity and ORM overhead, we achieve a simpler, more maintainable system.
 
-**Key Improvements from Review**:
-- **SQLite persistence** prevents data loss and enables recovery
-- **Atomic state management** eliminates race conditions
+**Key Architectural Decisions**:
+- **Document storage** eliminates ORM complexity for our non-relational data
+- **Progressive enhancement** from memory → TinyDB → Redis provides smooth scaling
+- **Optimistic locking** delivers atomic operations without database transactions
 - **Resilience patterns** handle external service failures gracefully
 - **Simplified Phase 4** focuses on infrastructure over algorithms
 - **Reduced timeline** (10 weeks) through better scoping
@@ -485,29 +488,30 @@ This **revised** migration plan incorporates critical architectural improvements
 4. **Prototype-appropriate** complexity with clear upgrade path
 
 **Success Factors**:
-1. SQLite persistence from Day 1
-2. Atomic operations in all state transitions
+1. Simple in-memory storage for Phase 1 observe-only
+2. Document-level atomic operations (no ORM complexity)
 3. Circuit breakers for external services
 4. Simple pattern matching before complex AI
 5. Comprehensive testing at phase boundaries
 
 **Immediate Next Steps**:
-1. Implement SQLite storage layer
+1. Implement InMemoryAuditStorage for Phase 1
 2. Add asyncio locks for concurrency control
 3. Deploy Phase 1 with observe-only mode
 4. Validate architecture with real usage patterns
-5. Iterate based on observed behavior
+5. Plan Phase 2 TinyDB integration
 
 **Risk Mitigation**:
 The revised plan significantly reduces risk through:
-- Data persistence eliminating loss scenarios
-- Atomic operations preventing inconsistent states
-- Fallback strategies ensuring system availability
+- No ORM complexity or session management
+- Document-level atomicity matching our data model
+- Progressive storage enhancement path
 - Simplified scope appropriate for prototype constraints
 
 This migration provides a solid foundation that can evolve from prototype to production-ready system while maintaining stability and delivering value at each phase.
 
 For detailed implementation specifications, see the supporting documents:
+- [Persistence Strategy Revision](./persistence_revisions.md)
 - [Unified Rule Model Specification](./unified-rule-model.md)
 - [Phase 1 Implementation Details](./phase-1-observe-only.md)
 - [Phase 2 Implementation Details](./phase-2-rule-management.md)  

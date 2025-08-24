@@ -237,91 +237,93 @@ class EnhancedAuditEntry(BaseModel):
         return base_format
 ```
 
-#### 2. Enhanced Audit Storage with Atomic Operations
+#### 2. Document Storage with Atomic Operations (Phase 3)
 
 ```python
-# File: src/superego_mcp/infrastructure/audit_storage.py
+# File: src/superego_mcp/infrastructure/document_storage.py
 
-# Enhancement to HybridAuditStorage from Phase 1
+from abc import ABC, abstractmethod
+from typing import Optional, Dict, Any
+import asyncio
+from datetime import datetime
 
-class HybridAuditStorage:
-    """Enhanced storage with atomic update operations"""
+class DocumentStorageBase(ABC):
+    """Abstract base for document storage implementations"""
     
-    # ... existing methods from Phase 1 ...
+    @abstractmethod
+    async def get_entry(self, entry_id: str) -> Optional[AuditEntry]:
+        pass
+    
+    @abstractmethod
+    async def update_entry_atomic(self, entry: AuditEntry) -> bool:
+        pass
+
+class OptimisticLockStorage(DocumentStorageBase):
+    """Document storage with optimistic locking for atomic operations"""
+    
+    def __init__(self, backend: DocumentStorageBase):
+        self.backend = backend
+        self._entry_locks = {}  # Document-level asyncio locks
+        self._locks_lock = asyncio.Lock()
     
     async def update_entry_atomic(self, entry: AuditEntry) -> bool:
-        """Atomically update entry with optimistic locking"""
-        async with self._lock:
-            conn = sqlite3.connect(str(self.db_path))
-            try:
-                # Get current version from database
-                cursor = conn.execute(
-                    'SELECT version FROM audit_entries WHERE id = ?',
-                    (entry.id,)
-                )
-                row = cursor.fetchone()
-                if not row:
-                    return False
-                
-                current_version = row[0]
-                
-                # Increment version for update
-                entry.version = current_version + 1
-                
-                # Attempt atomic update with version check
-                cursor = conn.execute('''
-                    UPDATE audit_entries 
-                    SET data = ?, 
-                        state = ?, 
-                        version = ?,
-                        agent_identity = ?,
-                        tool_name = ?,
-                        decision_action = ?
-                    WHERE id = ? AND version = ?
-                ''', (
-                    json.dumps(entry.model_dump(mode='json')),
-                    entry.state.value,
-                    entry.version,
-                    entry.agent_identity,
-                    entry.tool_name,
-                    entry.decision.action if entry.decision else None,
-                    entry.id,
-                    current_version  # Only update if version matches
-                ))
-                
-                if cursor.rowcount == 0:
-                    # Version mismatch - concurrent update detected
-                    conn.rollback()
+        """Atomically update entry with optimistic locking pattern"""
+        max_retries = 3
+        
+        for attempt in range(max_retries):
+            # Get current entry
+            current = await self.backend.get_entry(entry.id)
+            if not current:
+                return False
+            
+            # Check expected version
+            if hasattr(entry, 'expected_version'):
+                if current.version != entry.expected_version:
                     logger.warning(
-                        "Concurrent update detected, version mismatch",
+                        "Version mismatch",
                         entry_id=entry.id,
-                        expected_version=current_version,
-                        new_version=entry.version
+                        expected=entry.expected_version,
+                        actual=current.version
                     )
                     return False
-                
-                conn.commit()
-                
-                # Update cache
-                if entry.id in self.cache:
-                    self.cache[entry.id] = entry
-                
+            
+            # Increment version
+            entry.version = (current.version or 0) + 1
+            
+            # Try to save with version check
+            success = await self.backend.update_if_version_matches(
+                entry, 
+                current.version
+            )
+            
+            if success:
                 return True
-                
-            except Exception as e:
-                conn.rollback()
-                logger.error("Failed to update entry atomically", error=str(e))
-                return False
-            finally:
-                conn.close()
+            
+            # Retry with exponential backoff
+            if attempt < max_retries - 1:
+                await asyncio.sleep(0.1 * (2 ** attempt))
+        
+        logger.error("Failed to update after retries", entry_id=entry.id)
+        return False
+    
+    async def with_document_lock(self, entry_id: str, operation):
+        """Execute operation with document-level lock"""
+        # Get or create lock for this document
+        async with self._locks_lock:
+            if entry_id not in self._entry_locks:
+                self._entry_locks[entry_id] = asyncio.Lock()
+            lock = self._entry_locks[entry_id]
+        
+        # Execute with lock
+        async with lock:
+            return await operation()
     
     async def cleanup_locks(self) -> None:
         """Clean up unused locks periodically"""
-        # Remove locks for entries that no longer exist or are not pending
         async with self._locks_lock:
             to_remove = []
             for entry_id in self._entry_locks.keys():
-                entry = await self.get_entry(entry_id)
+                entry = await self.backend.get_entry(entry_id)
                 if not entry or entry.state != AuditEntryState.PENDING:
                     to_remove.append(entry_id)
             

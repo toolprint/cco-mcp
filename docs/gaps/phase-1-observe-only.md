@@ -88,89 +88,49 @@ class AuditEntry(BaseModel):
         return result
 ```
 
-#### 2. Hybrid Audit Storage with SQLite Persistence
+#### 2. In-Memory Audit Storage (Phase 1 Observe-Only)
 
 ```python
 # File: src/superego_mcp/infrastructure/audit_storage.py
 
-import sqlite3
-import json
 import asyncio
 from collections import OrderedDict
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
-from pathlib import Path
+from pydantic import BaseModel
 
-class HybridAuditStorage:
-    """SQLite persistence with in-memory LRU cache for performance"""
+class InMemoryAuditStorage:
+    """Pure in-memory storage for Phase 1 observe-only mode
     
-    def __init__(self, db_path: str = "~/.superego-mcp/audit.db", cache_size: int = 1000):
-        self.db_path = Path(db_path).expanduser()
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self.cache = OrderedDict()  # LRU cache
-        self.cache_size = cache_size
+    Simple, fast, and sufficient for observe-only functionality.
+    No persistence needed as we're just monitoring AI decisions.
+    """
+    
+    def __init__(self, max_entries: int = 10000):
+        self.entries = OrderedDict()  # Preserves insertion order, O(1) access
+        self.max_entries = max_entries
         self._lock = asyncio.Lock()
-        self._init_db()
-    
-    def _init_db(self):
-        """Initialize SQLite database schema"""
-        conn = sqlite3.connect(str(self.db_path))
-        conn.execute('PRAGMA journal_mode=WAL')  # Better concurrency
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS audit_entries (
-                id TEXT PRIMARY KEY,
-                timestamp REAL NOT NULL,
-                data JSON NOT NULL,
-                state TEXT NOT NULL,
-                version INTEGER DEFAULT 1,
-                expires_at REAL NOT NULL,
-                agent_identity TEXT,
-                tool_name TEXT,
-                decision_action TEXT,
-                created_at REAL DEFAULT (julianday('now'))
-            )
-        ''')
-        # Create indexes for common queries
-        conn.execute('CREATE INDEX IF NOT EXISTS idx_timestamp ON audit_entries(timestamp DESC)')
-        conn.execute('CREATE INDEX IF NOT EXISTS idx_state ON audit_entries(state)')
-        conn.execute('CREATE INDEX IF NOT EXISTS idx_agent ON audit_entries(agent_identity)')
-        conn.execute('CREATE INDEX IF NOT EXISTS idx_tool ON audit_entries(tool_name)')
-        conn.execute('CREATE INDEX IF NOT EXISTS idx_expires ON audit_entries(expires_at)')
-        conn.commit()
-        conn.close()
+        self._expiry_check_counter = 0
     
     async def add_entry(self, entry: AuditEntry) -> None:
-        """Add new audit entry to both cache and database"""
+        """Add new audit entry to memory store"""
         async with self._lock:
-            # Add to cache (LRU eviction if full)
-            if len(self.cache) >= self.cache_size:
-                self.cache.popitem(last=False)  # Remove oldest
-            self.cache[entry.id] = entry
+            # FIFO eviction if at capacity
+            if len(self.entries) >= self.max_entries:
+                self.entries.popitem(last=False)  # Remove oldest
             
-            # Persist to SQLite
-            await self._save_to_db(entry)
+            self.entries[entry.id] = entry
             
-            # Clean up expired entries periodically
-            if len(self.cache) % 100 == 0:
+            # Periodic expired entry cleanup (every 100 entries)
+            self._expiry_check_counter += 1
+            if self._expiry_check_counter >= 100:
+                self._expiry_check_counter = 0
                 await self._cleanup_expired()
     
     async def get_entry(self, entry_id: str) -> Optional[AuditEntry]:
-        """Get specific audit entry by ID from cache or database"""
+        """Get specific audit entry by ID"""
         async with self._lock:
-            # Check cache first
-            if entry_id in self.cache:
-                # Move to end (most recently used)
-                self.cache.move_to_end(entry_id)
-                return self.cache[entry_id]
-            
-            # Load from database
-            entry = await self._load_from_db(entry_id)
-            if entry:
-                # Add to cache
-                if len(self.cache) >= self.cache_size:
-                    self.cache.popitem(last=False)
-                self.cache[entry_id] = entry
-            return entry
+            return self.entries.get(entry_id)
     
     async def query_entries(
         self,
@@ -181,108 +141,68 @@ class HybridAuditStorage:
         offset: int = 0,
         limit: int = 100
     ) -> Dict[str, Any]:
-        """Query audit entries from database with filtering and pagination"""
+        """Query audit entries with filtering and pagination"""
         async with self._lock:
-            conn = sqlite3.connect(str(self.db_path))
-            conn.row_factory = sqlite3.Row
+            # Filter entries in memory
+            filtered = []
+            for entry in self.entries.values():
+                # Apply filters
+                if state and entry.state.value.upper() != state.upper():
+                    continue
+                if agent_identity and entry.agent_identity != agent_identity:
+                    continue
+                if tool_name and entry.tool_name != tool_name:
+                    continue
+                if search and not self._matches_search(entry, search):
+                    continue
+                
+                filtered.append(entry)
             
-            # Build query with filters
-            query = "SELECT * FROM audit_entries WHERE 1=1"
-            params = []
+            # Sort by timestamp (newest first)
+            filtered.sort(key=lambda e: e.timestamp, reverse=True)
             
-            if state:
-                query += " AND state = ?"
-                params.append(state.upper())
-            if agent_identity:
-                query += " AND agent_identity = ?"
-                params.append(agent_identity)
-            if tool_name:
-                query += " AND tool_name = ?"
-                params.append(tool_name)
-            if search:
-                query += " AND (tool_name LIKE ? OR data LIKE ? OR agent_identity LIKE ?)"
-                search_pattern = f"%{search}%"
-                params.extend([search_pattern, search_pattern, search_pattern])
-            
-            # Get total count
-            count_query = query.replace("SELECT *", "SELECT COUNT(*)")
-            total = conn.execute(count_query, params).fetchone()[0]
-            
-            # Apply ordering and pagination
-            query += " ORDER BY timestamp DESC LIMIT ? OFFSET ?"
-            params.extend([limit, offset])
-            
-            # Execute query
-            cursor = conn.execute(query, params)
-            rows = cursor.fetchall()
-            
-            # Convert rows to entries
-            entries = []
-            for row in rows:
-                data = json.loads(row['data'])
-                entry = AuditEntry(**data)
-                entries.append(entry.to_cco_format())
-            
-            conn.close()
+            # Apply pagination
+            total = len(filtered)
+            paginated = filtered[offset:offset + limit]
             
             return {
-                "entries": entries,
+                "entries": [entry.to_cco_format() for entry in paginated],
                 "total": total,
                 "offset": offset,
                 "limit": limit,
                 "hasMore": offset + limit < total
             }
     
-    async def _save_to_db(self, entry: AuditEntry) -> None:
-        """Save entry to SQLite database"""
-        conn = sqlite3.connect(str(self.db_path))
-        try:
-            conn.execute('''
-                INSERT OR REPLACE INTO audit_entries 
-                (id, timestamp, data, state, expires_at, agent_identity, tool_name, decision_action)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                entry.id,
-                entry.timestamp.timestamp(),
-                json.dumps(entry.model_dump(mode='json')),
-                entry.state.value,
-                entry.expires_at.timestamp(),
-                entry.agent_identity,
-                entry.tool_name,
-                entry.decision.action
-            ))
-            conn.commit()
-        finally:
-            conn.close()
-    
-    async def _load_from_db(self, entry_id: str) -> Optional[AuditEntry]:
-        """Load entry from SQLite database"""
-        conn = sqlite3.connect(str(self.db_path))
-        conn.row_factory = sqlite3.Row
-        try:
-            cursor = conn.execute('SELECT data FROM audit_entries WHERE id = ?', (entry_id,))
-            row = cursor.fetchone()
-            if row:
-                data = json.loads(row['data'])
-                return AuditEntry(**data)
-            return None
-        finally:
-            conn.close()
+    def _matches_search(self, entry: AuditEntry, search: str) -> bool:
+        """Check if entry matches search terms"""
+        search_lower = search.lower()
+        return (
+            search_lower in entry.tool_name.lower() or
+            search_lower in entry.decision.reason.lower() or
+            search_lower in str(entry.tool_input).lower() or
+            (entry.agent_identity and search_lower in entry.agent_identity.lower())
+        )
     
     async def _cleanup_expired(self) -> None:
-        """Remove expired entries from database and cache"""
-        now = datetime.now().timestamp()
-        
-        # Clean database
-        conn = sqlite3.connect(str(self.db_path))
-        conn.execute('DELETE FROM audit_entries WHERE expires_at < ?', (now,))
-        conn.commit()
-        conn.close()
-        
-        # Clean cache
-        expired_ids = [k for k, v in self.cache.items() if v.expires_at.timestamp() < now]
+        """Remove expired entries from memory"""
+        now = datetime.now()
+        expired_ids = [
+            entry_id for entry_id, entry in self.entries.items()
+            if entry.expires_at < now
+        ]
         for entry_id in expired_ids:
-            del self.cache[entry_id]
+            del self.entries[entry_id]
+    
+    async def get_stats(self) -> Dict[str, Any]:
+        """Get storage statistics"""
+        async with self._lock:
+            return {
+                "total_entries": len(self.entries),
+                "max_entries": self.max_entries,
+                "capacity_used": len(self.entries) / self.max_entries,
+                "oldest_entry": next(iter(self.entries.values())).timestamp if self.entries else None,
+                "newest_entry": list(self.entries.values())[-1].timestamp if self.entries else None
+            }
 ```
 
 #### 3. New API Endpoints
@@ -376,7 +296,7 @@ import asyncio
 class AuditEventStreamer:
     """SSE event streaming for audit log updates"""
     
-    def __init__(self, audit_storage: HybridAuditStorage):
+    def __init__(self, audit_storage: InMemoryAuditStorage):
         self.audit_storage = audit_storage
         self.subscribers: set[asyncio.Queue] = set()
     
@@ -845,11 +765,11 @@ export function AuditLogEntry({
 
 import pytest
 from datetime import datetime, timedelta
-from superego_mcp.infrastructure.audit_storage import HybridAuditStorage, AuditEntry, AuditEntryState
+from superego_mcp.infrastructure.audit_storage import InMemoryAuditStorage, AuditEntry, AuditEntryState
 
 @pytest.mark.asyncio
 async def test_add_and_query_entries():
-    storage = HybridAuditStorage(db_path=":memory:", cache_size=100)
+    storage = InMemoryAuditStorage(max_entries=100)
     
     # Create test entry
     entry = AuditEntry(
@@ -878,7 +798,7 @@ async def test_add_and_query_entries():
 
 @pytest.mark.asyncio 
 async def test_filtering():
-    storage = HybridAuditStorage()
+    storage = InMemoryAuditStorage()
     
     # Add multiple entries
     entries = [

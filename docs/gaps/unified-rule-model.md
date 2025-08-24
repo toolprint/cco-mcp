@@ -785,3 +785,127 @@ class UnifiedRuleEngineWithResilience(UnifiedRuleEngine):
 ```
 
 This unified model provides a foundation for supporting all current capabilities while enabling future enhancements through the extensible evaluator interface.
+
+## Document Storage Integration
+
+The unified rule model integrates with document-oriented storage for efficient persistence and atomic operations:
+
+### Storage Abstraction
+
+```python
+from abc import ABC, abstractmethod
+from typing import Protocol
+
+class DocumentStorage(Protocol):
+    """Protocol for document storage implementations"""
+    
+    async def get(self, key: str) -> Optional[Dict[str, Any]]:
+        ...
+    
+    async def set(self, key: str, value: Dict[str, Any]) -> None:
+        ...
+    
+    async def update_atomic(self, key: str, updater: Callable) -> bool:
+        ...
+    
+    async def query(self, **filters) -> List[Dict[str, Any]]:
+        ...
+
+class StorageFactory:
+    """Factory for creating storage implementations based on phase"""
+    
+    @staticmethod
+    def create_storage(phase: str) -> DocumentStorage:
+        if phase == "phase1":
+            return InMemoryStorage()
+        elif phase == "phase2":
+            return TinyDBStorage()
+        elif phase == "phase3":
+            return RedisStorage()
+        else:
+            return MongoDBStorage()
+```
+
+### Rule Storage Example with Redis
+
+```python
+class RedisRuleStorage:
+    """Redis-based storage for unified rules with atomic operations"""
+    
+    async def save_rule(self, rule: UnifiedRule) -> str:
+        """Save rule with automatic versioning"""
+        key = f"rule:{rule.id}"
+        
+        # Atomic save with version increment
+        async with self.redis.pipeline() as pipe:
+            pipe.json().set(key, Path.root_path(), rule.model_dump())
+            pipe.hincrby(f"rule:versions:{rule.id}", "version", 1)
+            await pipe.execute()
+        
+        return rule.id
+    
+    async def update_rule_atomic(self, rule_id: str, updates: Dict) -> bool:
+        """Atomically update rule with optimistic locking"""
+        key = f"rule:{rule_id}"
+        
+        for attempt in range(3):  # Retry on conflicts
+            async with self.redis.pipeline() as pipe:
+                try:
+                    await pipe.watch(key)
+                    current = await pipe.json().get(key)
+                    
+                    if not current:
+                        return False
+                    
+                    # Apply updates
+                    updated = {**current, **updates, "version": current["version"] + 1}
+                    
+                    pipe.multi()
+                    pipe.json().set(key, Path.root_path(), updated)
+                    await pipe.execute()
+                    return True
+                    
+                except redis.WatchError:
+                    await asyncio.sleep(0.1 * (2 ** attempt))
+                    continue
+        
+        return False
+```
+
+### Decision Storage with Atomic State Transitions
+
+```python
+class DocumentBasedDecisionStorage:
+    """Document storage for decisions with atomic state management"""
+    
+    async def transition_decision_state(
+        self,
+        decision_id: str,
+        from_state: str,
+        to_state: str,
+        metadata: Optional[Dict] = None
+    ) -> bool:
+        """Atomically transition decision state"""
+        
+        # Document-level atomic update
+        decision = await self.storage.get(f"decision:{decision_id}")
+        
+        if not decision or decision["state"] != from_state:
+            return False
+        
+        decision["state"] = to_state
+        decision["version"] += 1
+        decision["updated_at"] = datetime.utcnow().isoformat()
+        
+        if metadata:
+            decision["metadata"].update(metadata)
+        
+        # Use storage-specific atomic operation
+        return await self.storage.update_atomic(
+            f"decision:{decision_id}",
+            decision,
+            expected_version=decision["version"] - 1
+        )
+```
+
+This document-oriented approach eliminates ORM complexity while maintaining ACID properties at the document level, perfectly suited for the unified rule model's non-relational data structure.
