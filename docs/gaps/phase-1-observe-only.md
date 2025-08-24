@@ -24,8 +24,8 @@ Phase 1 establishes the foundation for the migration by implementing an "observe
 ```python
 # File: src/superego_mcp/domain/models.py
 
-from dataclasses import dataclass, field
-from datetime import datetime
+from pydantic import BaseModel, Field
+from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
 from enum import Enum
 
@@ -37,8 +37,7 @@ class AuditEntryState(Enum):
     DENIED = "denied"           # Human denied after ASK
     TIMEOUT = "timeout"         # Timeout occurred during ASK
 
-@dataclass
-class AuditEntry:
+class AuditEntry(BaseModel):
     """Unified audit entry with decision tracking"""
     id: str
     timestamp: datetime
@@ -52,8 +51,8 @@ class AuditEntry:
     decision: Decision  # Contains action (allow/deny/ask), reason, and metadata
     
     # State management
-    state: AuditEntryState = AuditEntryState.COMPLETED
-    expires_at: datetime = field(default_factory=lambda: datetime.now() + timedelta(hours=24))
+    state: AuditEntryState = Field(default=AuditEntryState.COMPLETED)
+    expires_at: datetime = Field(default_factory=lambda: datetime.now() + timedelta(hours=24))
     
     # Rule information
     rule_id: Optional[str] = None

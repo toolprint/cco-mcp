@@ -23,7 +23,7 @@ Phase 3 introduces manual review capabilities, enabling rules to escalate tool c
 # File: src/superego_mcp/domain/models.py
 
 from enum import Enum
-from dataclasses import dataclass, field
+from pydantic import BaseModel, Field
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 
@@ -41,31 +41,28 @@ class TimeoutAction(Enum):
     ALWAYS_DENY = "always_deny"
     EXTEND_TIMEOUT = "extend_timeout"
 
-@dataclass
-class PendingReviewMetadata:
+class PendingReviewMetadata(BaseModel):
     """Metadata for pending reviews"""
     escalated_at: datetime
     timeout_at: datetime
     timeout_action: TimeoutAction
-    priority: str = "normal"  # "low", "normal", "high", "critical"
-    review_reason: str = ""
-    required_approvers: int = 1
-    current_approvers: int = 0
-    reviewer_notes: Dict[str, str] = field(default_factory=dict)
+    priority: str = Field(default="normal")  # "low", "normal", "high", "critical"
+    review_reason: str = Field(default="")
+    required_approvers: int = Field(default=1)
+    current_approvers: int = Field(default=0)
+    reviewer_notes: Dict[str, str] = Field(default_factory=dict)
 
-@dataclass
-class DecisionMetadata:
+class DecisionMetadata(BaseModel):
     """Metadata for human decisions"""
     decided_at: datetime
     decided_by: str
     decision_reason: str
-    confidence: float = 1.0  # Human decisions default to high confidence
+    confidence: float = Field(default=1.0)  # Human decisions default to high confidence
     additional_notes: Optional[str] = None
-    decision_time_seconds: int = 0  # Time taken to make decision
+    decision_time_seconds: int = Field(default=0)  # Time taken to make decision
 
 # Enhanced audit entry with full state management
-@dataclass
-class EnhancedAuditEntry:
+class EnhancedAuditEntry(BaseModel):
     """Enhanced audit entry with human review capabilities"""
     # ... existing fields from Phase 1 ...
     

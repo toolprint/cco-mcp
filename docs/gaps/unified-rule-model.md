@@ -346,12 +346,11 @@ class UnifiedRuleEngine:
 ### Core Models
 
 ```python
-from dataclasses import dataclass
-from typing import Optional, Dict, Any
+from pydantic import BaseModel, Field
+from typing import Optional, Dict, Any, List
 from datetime import datetime
 
-@dataclass
-class AgentDecisionMetadata:
+class AgentDecisionMetadata(BaseModel):
     """Metadata from agent evaluation"""
     confidence: float
     provider: Optional[str] = None
@@ -359,8 +358,7 @@ class AgentDecisionMetadata:
     processing_time_ms: Optional[int] = None
     agent_id: Optional[str] = None
 
-@dataclass
-class HumanEscalationMetadata:
+class HumanEscalationMetadata(BaseModel):
     """Metadata for human escalation tracking"""
     escalated_at: datetime
     timeout_at: datetime
@@ -368,18 +366,16 @@ class HumanEscalationMetadata:
     resolved_at: Optional[datetime] = None
     resolved_by: Optional[str] = None
     resolution_reason: Optional[str] = None
-    priority: str = "normal"
+    priority: str = Field(default="normal")
 
-@dataclass
-class ObservabilityMetadata:
+class ObservabilityMetadata(BaseModel):
     """Observability and statistics metadata"""
     processing_time_ms: int
     timestamp: datetime
-    rule_evaluation_count: int = 0
-    escalation_chain: List[str] = None
+    rule_evaluation_count: int = Field(default=0)
+    escalation_chain: Optional[List[str]] = None
 
-@dataclass
-class Decision:
+class Decision(BaseModel):
     """Unified decision model matching Claude Code Hook schema"""
     action: str  # "allow", "deny", "ask"
     reason: str  # Required non-empty string
@@ -390,20 +386,23 @@ class Decision:
     observability: Optional[ObservabilityMetadata] = None
     
     # Escalation chain tracking
-    escalation_history: List[Dict[str, Any]] = None
+    escalation_history: Optional[List[Dict[str, Any]]] = None
     parent_decision_id: Optional[str] = None
-    decision_id: str = None  # Unique ID for tracking through lifecycle
+    decision_id: Optional[str] = None  # Unique ID for tracking through lifecycle
 
-@dataclass
-class RuleEvaluationResult:
+class RuleEvaluationResult(BaseModel):
     """Result of individual rule evaluation"""
-    action: Optional[RuleAction]
+    action: Optional[RuleAction] = None
     reason: str
     evaluator_type: str
     metadata: Optional[Dict[str, Any]] = None
 
-@dataclass
-class UnifiedRule:
+class RuleEvaluatorConfig(BaseModel):
+    """Configuration for specific evaluator type"""
+    type: str  # "pattern", "delegate_to_agent", "escalate_to_human", "conditional"
+    config: Dict[str, Any]
+
+class UnifiedRule(BaseModel):
     """Unified rule configuration"""
     id: str
     name: str
@@ -411,13 +410,7 @@ class UnifiedRule:
     priority: int
     evaluator: RuleEvaluatorConfig
     description: Optional[str] = None
-    tags: List[str] = None
-
-@dataclass
-class RuleEvaluatorConfig:
-    """Configuration for specific evaluator type"""
-    type: str  # "pattern", "delegate_to_agent", "escalate_to_human", "conditional"
-    config: Dict[str, Any]
+    tags: Optional[List[str]] = None
 ```
 
 ## Migration Strategy

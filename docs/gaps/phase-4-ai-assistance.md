@@ -23,17 +23,16 @@ Phase 4 enhances the human review process with AI-powered assistance, providing 
 # File: src/superego_mcp/domain/ai_review_assistant.py
 
 from typing import List, Dict, Any, Optional, Tuple
-from dataclasses import dataclass
+from pydantic import BaseModel, Field
 from datetime import datetime, timedelta
-from ..domain.models import EnhancedAuditEntry, ToolRequest
+from ..domain.models import AuditEntry, ToolRequest, Decision
 from ..domain.security_policy import SecurityPolicyEngine
 from ..infrastructure.ai_service import AIService
 import structlog
 
 logger = structlog.get_logger(__name__)
 
-@dataclass
-class RiskFactor:
+class RiskFactor(BaseModel):
     """Individual risk factor identified by AI analysis"""
     factor: str
     severity: str  # "low", "medium", "high", "critical"
@@ -41,8 +40,7 @@ class RiskFactor:
     description: str
     mitigation: Optional[str] = None
 
-@dataclass
-class RiskAnalysis:
+class RiskAnalysis(BaseModel):
     """Comprehensive risk analysis for a tool request"""
     overall_risk: str  # "low", "medium", "high", "critical"
     confidence: float
@@ -50,10 +48,9 @@ class RiskAnalysis:
     risk_score: float  # 0.0 to 1.0
     explanation: str
     recommended_action: str  # "approve", "deny", "investigate"
-    similar_decisions_weight: float = 0.0
+    similar_decisions_weight: float = Field(default=0.0)
 
-@dataclass
-class SimilarDecision:
+class SimilarDecision(BaseModel):
     """Similar past decision for context"""
     entry_id: str
     tool_name: str
@@ -65,8 +62,7 @@ class SimilarDecision:
     confidence: float
     timestamp: datetime
 
-@dataclass
-class DecisionRecommendation:
+class DecisionRecommendation(BaseModel):
     """AI recommendation for human decision"""
     recommended_action: str  # "approve", "deny"
     confidence: float
@@ -76,8 +72,7 @@ class DecisionRecommendation:
     suggested_rules: List['RuleSuggestion']
     processing_time_ms: int
 
-@dataclass
-class RuleSuggestion:
+class RuleSuggestion(BaseModel):
     """Suggested rule modification based on patterns"""
     suggestion_type: str  # "create", "modify", "disable"
     rule_id: Optional[str]  # None for create

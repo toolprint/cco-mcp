@@ -148,33 +148,34 @@ class RuleEvaluator(ABC):
 
 #### Current Superego Decision Model
 ```python
-@dataclass
-class Decision:
+from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any
+from datetime import datetime
+
+class Decision(BaseModel):
     action: str  # "allow", "deny", "ask"
     reason: str  # Required non-empty string
     decision_id: str  # Unique ID for tracking through lifecycle
     
     # Optional metadata structures
-    agent_metadata: Optional[AgentDecisionMetadata] = None
-    human_metadata: Optional[HumanEscalationMetadata] = None
-    observability: Optional[ObservabilityMetadata] = None
+    agent_metadata: Optional['AgentDecisionMetadata'] = None
+    human_metadata: Optional['HumanEscalationMetadata'] = None
+    observability: Optional['ObservabilityMetadata'] = None
     
     # Escalation chain tracking
-    escalation_history: List[Dict[str, Any]] = None
+    escalation_history: Optional[List[Dict[str, Any]]] = None
     parent_decision_id: Optional[str] = None
 ```
 
 #### Enhanced Decision Model with Metadata
 ```python
-@dataclass
-class AgentDecisionMetadata:
+class AgentDecisionMetadata(BaseModel):
     confidence: float
     provider: Optional[str] = None
     model: Optional[str] = None
     processing_time_ms: Optional[int] = None
 
-@dataclass
-class HumanEscalationMetadata:
+class HumanEscalationMetadata(BaseModel):
     escalated_at: datetime
     timeout_at: datetime
     timeout_action: str
@@ -182,12 +183,11 @@ class HumanEscalationMetadata:
     resolved_by: Optional[str] = None
     resolution_reason: Optional[str] = None
 
-@dataclass
-class ObservabilityMetadata:
+class ObservabilityMetadata(BaseModel):
     processing_time_ms: int
     timestamp: datetime
-    rule_evaluation_count: int = 0
-    escalation_chain: List[str] = None
+    rule_evaluation_count: int = Field(default=0)
+    escalation_chain: Optional[List[str]] = None
 ```
 
 ## Implementation Details by Phase
@@ -318,13 +318,12 @@ class ReviewAssistant:
 
 2. **Enhanced Metadata**
 ```python
-@dataclass
-class AuditEntryWithAssistance:
+class AuditEntryWithAssistance(BaseModel):
     entry: AuditEntry
     risk_analysis: Optional[RiskAnalysis] = None
-    similar_decisions: List[SimilarDecision] = []
+    similar_decisions: List[SimilarDecision] = Field(default_factory=list)
     suggested_action: Optional[str] = None
-    confidence_explanation: str = ""
+    confidence_explanation: str = Field(default="")
 ```
 
 ## Risk Assessment & Mitigation

@@ -22,7 +22,7 @@ Phase 2 builds on the observe-only foundation from Phase 1 by adding comprehensi
 ```python
 # File: src/superego_mcp/domain/unified_rules.py
 
-from dataclasses import dataclass, field
+from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional, Union
 from enum import Enum
 import uuid
@@ -35,16 +35,14 @@ class RuleEvaluatorType(Enum):
     ESCALATE_TO_HUMAN = "escalate_to_human" # Manual review (Phase 3)
     CONDITIONAL = "conditional"              # Complex conditional logic (Phase 4)
 
-@dataclass
-class ToolPattern:
+class ToolPattern(BaseModel):
     """Pattern for matching tools"""
     name: str                    # Tool name (e.g., "Read", "Write")
-    type: str = "builtin"       # "builtin" or "mcp"
+    type: str = Field(default="builtin")       # "builtin" or "mcp"
     server_name: Optional[str] = None  # For MCP tools
     parameter_conditions: Optional[Dict[str, Any]] = None  # Parameter matching
 
-@dataclass
-class RuleEvaluatorConfig:
+class RuleEvaluatorConfig(BaseModel):
     """Configuration for a specific evaluator type"""
     type: RuleEvaluatorType
     config: Dict[str, Any]
@@ -62,8 +60,7 @@ class RuleEvaluatorConfig:
             config=data.get("config", {})
         )
 
-@dataclass
-class UnifiedRule:
+class UnifiedRule(BaseModel):
     """Unified rule supporting multiple evaluation strategies"""
     id: str
     name: str
@@ -71,9 +68,9 @@ class UnifiedRule:
     enabled: bool
     priority: int
     evaluator: RuleEvaluatorConfig
-    tags: List[str] = field(default_factory=list)
-    created_at: datetime = field(default_factory=datetime.now)
-    updated_at: datetime = field(default_factory=datetime.now)
+    tags: List[str] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
     created_by: Optional[str] = None
     updated_by: Optional[str] = None
 
@@ -240,18 +237,16 @@ class UnifiedRuleStorage:
 # File: src/superego_mcp/domain/rule_validation.py
 
 from typing import List, Dict, Any, Optional
-from dataclasses import dataclass
+from pydantic import BaseModel, Field
 from ..domain.unified_rules import UnifiedRule, RuleEvaluatorType
 
-@dataclass
-class ValidationError:
+class ValidationError(BaseModel):
     """Rule validation error"""
     field: str
     message: str
-    severity: str = "error"  # "error", "warning", "info"
+    severity: str = Field(default="error")  # "error", "warning", "info"
 
-@dataclass 
-class ValidationResult:
+class ValidationResult(BaseModel):
     """Result of rule validation"""
     valid: bool
     errors: List[ValidationError]
@@ -395,24 +390,21 @@ from dataclasses import dataclass
 from ..domain.models import ToolRequest
 from ..domain.unified_rules import UnifiedRule
 
-@dataclass
-class RuleTestRequest:
+class RuleTestRequest(BaseModel):
     """Request for testing a rule"""
     rule: UnifiedRule
     test_cases: List[Dict[str, Any]]  # List of tool requests to test against
 
-@dataclass
-class RuleTestCase:
+class RuleTestCase(BaseModel):
     """Individual test case"""
     tool_name: str
     parameters: Dict[str, Any]
-    agent_id: str = "test_agent"
-    session_id: str = "test_session"
-    cwd: str = "/tmp"
+    agent_id: str = Field(default="test_agent")
+    session_id: str = Field(default="test_session")
+    cwd: str = Field(default="/tmp")
     expected_action: Optional[str] = None  # Expected result for validation
 
-@dataclass
-class RuleTestResult:
+class RuleTestResult(BaseModel):
     """Result of testing a rule against test cases"""
     rule_id: str
     rule_name: str
@@ -420,8 +412,7 @@ class RuleTestResult:
     overall_success: bool
     execution_time_ms: int
 
-@dataclass
-class TestCaseResult:
+class TestCaseResult(BaseModel):
     """Result of individual test case"""
     test_case: RuleTestCase
     matched: bool
@@ -429,7 +420,7 @@ class TestCaseResult:
     reason: str
     confidence: float
     execution_time_ms: int
-    expected_match: bool = True
+    expected_match: bool = Field(default=True)
 
 class RuleTestEngine:
     """Engine for testing rules against sample data"""
