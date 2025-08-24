@@ -115,10 +115,10 @@ The migration centers around a new unified rule evaluation system that supports 
 
 ```python
 class RuleAction(Enum):
-    AUTO_APPROVE = "auto_approve"
-    AUTO_DENY = "auto_deny"
-    AI_SAMPLE = "ai_sample"
-    HUMAN_REVIEW = "human_review"
+    ALWAYS_ALLOW = "always_allow"
+    ALWAYS_DENY = "always_deny"
+    DELEGATE_TO_AGENT = "delegate_to_agent"
+    ESCALATE_TO_HUMAN = "escalate_to_human"
     CONDITIONAL = "conditional"
 
 class RuleEvaluator(ABC):
@@ -150,30 +150,44 @@ class RuleEvaluator(ABC):
 ```python
 @dataclass
 class Decision:
-    action: str  # "allow", "deny", "sample"
-    reason: str
-    confidence: float
-    processing_time_ms: int
-    rule_id: Optional[str] = None
+    action: str  # "allow", "deny", "ask"
+    reason: str  # Required non-empty string
+    decision_id: str  # Unique ID for tracking through lifecycle
+    
+    # Optional metadata structures
+    agent_metadata: Optional[AgentDecisionMetadata] = None
+    human_metadata: Optional[HumanEscalationMetadata] = None
+    observability: Optional[ObservabilityMetadata] = None
+    
+    # Escalation chain tracking
+    escalation_history: List[Dict[str, Any]] = None
+    parent_decision_id: Optional[str] = None
 ```
 
-#### Enhanced Decision Model
+#### Enhanced Decision Model with Metadata
 ```python
 @dataclass
-class EnhancedDecision:
-    action: str  # "allow", "deny", "ask", "sample"
-    reason: str
+class AgentDecisionMetadata:
     confidence: float
-    processing_time_ms: int
-    rule_id: Optional[str] = None
-    
-    # New fields for human review
-    state: str = "completed"  # "completed", "pending", "approved", "denied"
-    escalated_at: Optional[datetime] = None
+    provider: Optional[str] = None
+    model: Optional[str] = None
+    processing_time_ms: Optional[int] = None
+
+@dataclass
+class HumanEscalationMetadata:
+    escalated_at: datetime
+    timeout_at: datetime
+    timeout_action: str
     resolved_at: Optional[datetime] = None
     resolved_by: Optional[str] = None
-    timeout_at: Optional[datetime] = None
-    requires_approval: bool = False
+    resolution_reason: Optional[str] = None
+
+@dataclass
+class ObservabilityMetadata:
+    processing_time_ms: int
+    timestamp: datetime
+    rule_evaluation_count: int = 0
+    escalation_chain: List[str] = None
 ```
 
 ## Implementation Details by Phase
@@ -188,7 +202,7 @@ class AuditEntry:
     id: str
     timestamp: datetime
     request: ToolRequest
-    decision: EnhancedDecision
+    decision: Decision
     state: str = "completed"
     metadata: Dict[str, Any] = {}
 ```

@@ -416,7 +416,7 @@ class AIReviewAssistant:
                             "type": "pattern",
                             "config": {
                                 "tool_patterns": [{"name": tool_request.tool_name, "type": "builtin"}],
-                                "action": "auto_approve"
+                                "action": "always_allow"
                             }
                         },
                         "priority": 200,
@@ -438,7 +438,7 @@ class AIReviewAssistant:
                             "type": "pattern",
                             "config": {
                                 "tool_patterns": [{"name": tool_request.tool_name, "type": "builtin"}],
-                                "action": "auto_deny"
+                                "action": "always_deny"
                             }
                         },
                         "priority": 100,
@@ -812,7 +812,7 @@ async def get_rule_suggestions(request: Request) -> Dict[str, Any]:
                             "type": "pattern",
                             "config": {
                                 "tool_patterns": [{"name": tool, "type": "builtin"}],
-                                "action": "auto_approve"
+                                "action": "always_allow"
                             }
                         },
                         "priority": 200,
@@ -833,7 +833,7 @@ async def get_rule_suggestions(request: Request) -> Dict[str, Any]:
                             "type": "pattern",
                             "config": {
                                 "tool_patterns": [{"name": tool, "type": "builtin"}],
-                                "action": "auto_deny"
+                                "action": "always_deny"
                             }
                         },
                         "priority": 100,

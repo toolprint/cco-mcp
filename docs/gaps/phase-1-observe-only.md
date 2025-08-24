@@ -30,16 +30,16 @@ from typing import Dict, Any, Optional, List
 from enum import Enum
 
 class AuditEntryState(Enum):
-    """States for audit entries (Phase 1 only uses COMPLETED)"""
-    COMPLETED = "completed"      # AI decision made
-    PENDING = "pending"          # Future: awaiting human review
-    APPROVED = "approved"        # Future: human approved
-    DENIED = "denied"           # Future: human denied
-    TIMEOUT = "timeout"         # Future: timeout occurred
+    """States for audit entries aligned with hook schema"""
+    COMPLETED = "completed"      # Decision made (allow/deny)
+    ASK = "ask"                 # Awaiting escalation (agent/human)
+    APPROVED = "approved"        # Human approved after ASK
+    DENIED = "denied"           # Human denied after ASK
+    TIMEOUT = "timeout"         # Timeout occurred during ASK
 
 @dataclass
-class EnhancedAuditEntry:
-    """Enhanced audit entry compatible with cco-mcp frontend"""
+class AuditEntry:
+    """Unified audit entry with decision tracking"""
     id: str
     timestamp: datetime
     tool_name: str
@@ -48,43 +48,45 @@ class EnhancedAuditEntry:
     session_id: str
     cwd: Optional[str]
     
-    # Decision details
-    decision_action: str  # "allow", "deny"
-    decision_reason: str
-    decision_confidence: float
-    processing_time_ms: int
-    rule_id: Optional[str]
-    rule_name: Optional[str]
+    # Core decision (matches hook schema)
+    decision: Decision  # Contains action (allow/deny/ask), reason, and metadata
     
-    # State management (Phase 1: always "completed")
+    # State management
     state: AuditEntryState = AuditEntryState.COMPLETED
-    decision_by: Optional[str] = None  # "ai_system" in Phase 1
-    decision_time: Optional[datetime] = None
     expires_at: datetime = field(default_factory=lambda: datetime.now() + timedelta(hours=24))
     
-    # Metadata for future phases
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    # Rule information
+    rule_id: Optional[str] = None
+    rule_name: Optional[str] = None
 
     def to_cco_format(self) -> Dict[str, Any]:
         """Convert to CCO-MCP frontend expected format"""
-        return {
+        result = {
             "id": self.id,
             "timestamp": self.timestamp.isoformat(),
             "tool_name": self.tool_name,
             "tool_input": self.tool_input,
             "agent_identity": self.agent_identity,
-            "state": self.state.value.upper(),  # "COMPLETED"
-            "decision_by": self.decision_by or "ai_system",
-            "decision_time": (self.decision_time or self.timestamp).isoformat(),
+            "state": self.state.value.upper(),
             "expires_at": self.expires_at.isoformat(),
-            # Add phase 1 specific fields
-            "decision_action": self.decision_action,
-            "decision_reason": self.decision_reason,
-            "decision_confidence": self.decision_confidence,
+            "decision_action": self.decision.action,
+            "decision_reason": self.decision.reason,
             "rule_id": self.rule_id,
-            "rule_name": self.rule_name,
-            "processing_time_ms": self.processing_time_ms
+            "rule_name": self.rule_name
         }
+        
+        # Add optional metadata if present
+        if self.decision.agent_metadata:
+            result["decision_confidence"] = self.decision.agent_metadata.confidence
+            result["decision_by"] = "ai_agent"
+        if self.decision.observability:
+            result["processing_time_ms"] = self.decision.observability.processing_time_ms
+            result["decision_time"] = self.decision.observability.timestamp.isoformat()
+        if self.decision.human_metadata:
+            result["decision_by"] = "human"
+            result["resolved_by"] = self.decision.human_metadata.resolved_by
+        
+        return result
 ```
 
 #### 2. Enhanced Audit Storage
@@ -102,11 +104,11 @@ class EnhancedAuditStorage:
     
     def __init__(self, max_entries: int = 10000):
         self.max_entries = max_entries
-        self.entries: deque[EnhancedAuditEntry] = deque(maxlen=max_entries)
+        self.entries: deque[AuditEntry] = deque(maxlen=max_entries)
         self._lock = asyncio.Lock()
-        self._id_index: Dict[str, EnhancedAuditEntry] = {}
+        self._id_index: Dict[str, AuditEntry] = {}
     
-    async def add_entry(self, entry: EnhancedAuditEntry) -> None:
+    async def add_entry(self, entry: AuditEntry) -> None:
         """Add new audit entry"""
         async with self._lock:
             self.entries.append(entry)
@@ -115,7 +117,7 @@ class EnhancedAuditStorage:
             # Clean up expired entries
             await self._cleanup_expired()
     
-    async def get_entry(self, entry_id: str) -> Optional[EnhancedAuditEntry]:
+    async def get_entry(self, entry_id: str) -> Optional[AuditEntry]:
         """Get specific audit entry by ID"""
         async with self._lock:
             return self._id_index.get(entry_id)

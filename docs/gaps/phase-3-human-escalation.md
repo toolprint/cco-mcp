@@ -37,8 +37,8 @@ class AuditEntryState(Enum):
 
 class TimeoutAction(Enum):
     """Actions to take on timeout"""
-    AUTO_APPROVE = "auto_approve"
-    AUTO_DENY = "auto_deny"
+    ALWAYS_ALLOW = "always_allow"
+    ALWAYS_DENY = "always_deny"
     EXTEND_TIMEOUT = "extend_timeout"
 
 @dataclass
@@ -493,7 +493,7 @@ class HumanReviewRuleEvaluator(RuleEvaluator):
                 action=None,
                 confidence=0.0,
                 reason="No pattern match",
-                evaluator_type="human_review"
+                evaluator_type="escalate_to_human"
             )
         
         # Check additional conditions if specified
@@ -503,12 +503,12 @@ class HumanReviewRuleEvaluator(RuleEvaluator):
                 action=None,
                 confidence=0.0,
                 reason="Conditions not met",
-                evaluator_type="human_review"
+                evaluator_type="escalate_to_human"
             )
         
         # Extract configuration
         timeout_seconds = rule_config.get("timeout_seconds", 300)  # 5 minute default
-        timeout_action = TimeoutAction(rule_config.get("timeout_action", "auto_deny"))
+        timeout_action = TimeoutAction(rule_config.get("timeout_action", "always_deny"))
         priority = rule_config.get("priority", "normal")
         review_reason = rule_config.get("review_reason", "Requires human review per security policy")
         
@@ -516,7 +516,7 @@ class HumanReviewRuleEvaluator(RuleEvaluator):
             action=RuleAction.HUMAN_REVIEW,
             confidence=1.0,
             reason=review_reason,
-            evaluator_type="human_review",
+            evaluator_type="escalate_to_human",
             review_metadata={
                 "timeout_seconds": timeout_seconds,
                 "timeout_action": timeout_action.value,
@@ -617,8 +617,8 @@ class HumanReviewRuleEvaluator(RuleEvaluator):
         if not isinstance(timeout_seconds, int) or timeout_seconds <= 0:
             return False
         
-        timeout_action = config.get("timeout_action", "auto_deny")
-        if timeout_action not in ["auto_approve", "auto_deny", "extend_timeout"]:
+        timeout_action = config.get("timeout_action", "always_deny")
+        if timeout_action not in ["always_allow", "always_deny", "extend_timeout"]:
             return False
         
         priority = config.get("priority", "normal")
@@ -1358,7 +1358,7 @@ async def test_pending_review_workflow():
 # File: tests/test_timeout_processing.py
 
 @pytest.mark.asyncio
-async def test_timeout_auto_deny():
+async def test_timeout_always_deny():
     storage = MockAuditStorage()
     manager = PendingReviewManager(storage, MockEventStreamer())
     
@@ -1404,7 +1404,7 @@ describe('PendingReviewEntry', () => {
     time_until_timeout: 180,
     review_reason: 'High-risk command',
     escalated_at: '2024-01-01T12:00:00Z',
-    timeout_action: 'auto_deny'
+    timeout_action: 'always_deny'
   };
 
   it('renders pending review with correct priority', () => {

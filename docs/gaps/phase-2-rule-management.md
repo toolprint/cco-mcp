@@ -30,10 +30,10 @@ from datetime import datetime
 
 class RuleEvaluatorType(Enum):
     """Types of rule evaluators supported"""
-    PATTERN = "pattern"           # Simple pattern matching
-    AI_SAMPLE = "ai_sample"       # AI-powered evaluation  
-    HUMAN_REVIEW = "human_review" # Manual review (Phase 3)
-    CONDITIONAL = "conditional"   # Complex conditional logic (Phase 4)
+    PATTERN = "pattern"                      # Simple pattern matching
+    DELEGATE_TO_AGENT = "delegate_to_agent"  # AI-powered evaluation  
+    ESCALATE_TO_HUMAN = "escalate_to_human" # Manual review (Phase 3)
+    CONDITIONAL = "conditional"              # Complex conditional logic (Phase 4)
 
 @dataclass
 class ToolPattern:
@@ -780,7 +780,7 @@ export function RuleEditor({ rule, onSave, onCancel, onValidate }: RuleEditorPro
         type: RuleEvaluatorType.PATTERN,
         config: {
           tool_patterns: [{ name: '', type: 'builtin' }],
-          action: 'auto_approve'
+          action: 'always_allow'
         }
       },
       tags: []
@@ -816,7 +816,7 @@ export function RuleEditor({ rule, onSave, onCancel, onValidate }: RuleEditorPro
     const defaultConfigs = {
       [RuleEvaluatorType.PATTERN]: {
         tool_patterns: [{ name: '', type: 'builtin' }],
-        action: 'auto_approve'
+        action: 'always_allow'
       },
       [RuleEvaluatorType.AI_SAMPLE]: {
         tool_patterns: [{ name: '', type: 'builtin' }],

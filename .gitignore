@@ -37,3 +37,7 @@ demos/*
 
 # Serena files
 .serena/
+
+# Codanna
+.codanna/
+.fastembed_cache/
