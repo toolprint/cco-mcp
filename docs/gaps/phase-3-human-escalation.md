@@ -237,7 +237,99 @@ class EnhancedAuditEntry(BaseModel):
         return base_format
 ```
 
-#### 2. Pending Review Management
+#### 2. Enhanced Audit Storage with Atomic Operations
+
+```python
+# File: src/superego_mcp/infrastructure/audit_storage.py
+
+# Enhancement to HybridAuditStorage from Phase 1
+
+class HybridAuditStorage:
+    """Enhanced storage with atomic update operations"""
+    
+    # ... existing methods from Phase 1 ...
+    
+    async def update_entry_atomic(self, entry: AuditEntry) -> bool:
+        """Atomically update entry with optimistic locking"""
+        async with self._lock:
+            conn = sqlite3.connect(str(self.db_path))
+            try:
+                # Get current version from database
+                cursor = conn.execute(
+                    'SELECT version FROM audit_entries WHERE id = ?',
+                    (entry.id,)
+                )
+                row = cursor.fetchone()
+                if not row:
+                    return False
+                
+                current_version = row[0]
+                
+                # Increment version for update
+                entry.version = current_version + 1
+                
+                # Attempt atomic update with version check
+                cursor = conn.execute('''
+                    UPDATE audit_entries 
+                    SET data = ?, 
+                        state = ?, 
+                        version = ?,
+                        agent_identity = ?,
+                        tool_name = ?,
+                        decision_action = ?
+                    WHERE id = ? AND version = ?
+                ''', (
+                    json.dumps(entry.model_dump(mode='json')),
+                    entry.state.value,
+                    entry.version,
+                    entry.agent_identity,
+                    entry.tool_name,
+                    entry.decision.action if entry.decision else None,
+                    entry.id,
+                    current_version  # Only update if version matches
+                ))
+                
+                if cursor.rowcount == 0:
+                    # Version mismatch - concurrent update detected
+                    conn.rollback()
+                    logger.warning(
+                        "Concurrent update detected, version mismatch",
+                        entry_id=entry.id,
+                        expected_version=current_version,
+                        new_version=entry.version
+                    )
+                    return False
+                
+                conn.commit()
+                
+                # Update cache
+                if entry.id in self.cache:
+                    self.cache[entry.id] = entry
+                
+                return True
+                
+            except Exception as e:
+                conn.rollback()
+                logger.error("Failed to update entry atomically", error=str(e))
+                return False
+            finally:
+                conn.close()
+    
+    async def cleanup_locks(self) -> None:
+        """Clean up unused locks periodically"""
+        # Remove locks for entries that no longer exist or are not pending
+        async with self._locks_lock:
+            to_remove = []
+            for entry_id in self._entry_locks.keys():
+                entry = await self.get_entry(entry_id)
+                if not entry or entry.state != AuditEntryState.PENDING:
+                    to_remove.append(entry_id)
+            
+            for entry_id in to_remove:
+                del self._entry_locks[entry_id]
+```
+
+#### 3. Pending Review Management
 
 ```python
 # File: src/superego_mcp/infrastructure/pending_review_manager.py
@@ -251,13 +343,18 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 class PendingReviewManager:
-    """Manages pending human reviews and timeouts"""
+    """Manages pending human reviews and timeouts with atomic state management"""
     
     def __init__(self, audit_storage, event_streamer):
         self.audit_storage = audit_storage
         self.event_streamer = event_streamer
         self._timeout_task: Optional[asyncio.Task] = None
         self._shutdown = False
+        # Atomic operation locks per entry
+        self._entry_locks: Dict[str, asyncio.Lock] = {}
+        self._locks_lock = asyncio.Lock()  # Lock for managing locks dict
+        # Idempotency tracking
+        self._processed_decisions: Dict[str, str] = {}  # decision_id -> result
         
     async def start(self) -> None:
         """Start the timeout monitoring task"""
@@ -309,82 +406,136 @@ class PendingReviewManager:
         entry_id: str,
         decided_by: str,
         reason: str,
-        notes: Optional[str] = None
+        notes: Optional[str] = None,
+        idempotency_key: Optional[str] = None
     ) -> bool:
-        """Approve a pending review entry"""
-        entry = await self.audit_storage.get_entry(entry_id)
-        if not entry or not entry.is_pending():
-            return False
+        """Approve a pending review entry with atomic state management"""
+        # Check idempotency
+        if idempotency_key and idempotency_key in self._processed_decisions:
+            logger.info("Idempotent request detected", idempotency_key=idempotency_key)
+            return self._processed_decisions[idempotency_key] == "approved"
         
-        # Calculate decision time
-        decision_time_seconds = 0
-        if entry.pending_metadata:
-            delta = datetime.now() - entry.pending_metadata.escalated_at
-            decision_time_seconds = int(delta.total_seconds())
+        # Get or create lock for this entry
+        async with self._locks_lock:
+            if entry_id not in self._entry_locks:
+                self._entry_locks[entry_id] = asyncio.Lock()
+            lock = self._entry_locks[entry_id]
         
-        # Transition to approved state
-        entry.transition_to_approved(
-            decided_by=decided_by,
-            reason=reason,
-            decision_time_seconds=decision_time_seconds,
-            notes=notes
-        )
-        
-        # Update in storage
-        await self.audit_storage.update_entry(entry)
-        
-        # Broadcast state change event
-        await self.event_streamer.broadcast_state_change(entry)
-        
-        logger.info(
-            "Entry approved by human reviewer",
-            entry_id=entry_id,
-            decided_by=decided_by,
-            decision_time_seconds=decision_time_seconds
-        )
-        
-        return True
+        # Perform atomic operation
+        async with lock:
+            # Re-fetch entry within lock to ensure consistency
+            entry = await self.audit_storage.get_entry(entry_id)
+            if not entry or not entry.is_pending():
+                logger.warning(
+                    "Entry not in pending state",
+                    entry_id=entry_id,
+                    current_state=entry.state if entry else "not_found"
+                )
+                return False
+            
+            # Calculate decision time
+            decision_time_seconds = 0
+            if entry.pending_metadata:
+                delta = datetime.now() - entry.pending_metadata.escalated_at
+                decision_time_seconds = int(delta.total_seconds())
+            
+            # Transition to approved state
+            entry.transition_to_approved(
+                decided_by=decided_by,
+                reason=reason,
+                decision_time_seconds=decision_time_seconds,
+                notes=notes
+            )
+            
+            # Update in storage with version check for optimistic locking
+            success = await self.audit_storage.update_entry_atomic(entry)
+            if not success:
+                logger.error("Failed to atomically update entry", entry_id=entry_id)
+                return False
+            
+            # Record idempotency
+            if idempotency_key:
+                self._processed_decisions[idempotency_key] = "approved"
+            
+            # Broadcast state change event (outside of critical section)
+            asyncio.create_task(self.event_streamer.broadcast_state_change(entry))
+            
+            logger.info(
+                "Entry approved by human reviewer",
+                entry_id=entry_id,
+                decided_by=decided_by,
+                decision_time_seconds=decision_time_seconds
+            )
+            
+            return True
     
     async def deny_entry(
         self,
         entry_id: str,
         decided_by: str,
         reason: str,
-        notes: Optional[str] = None
+        notes: Optional[str] = None,
+        idempotency_key: Optional[str] = None
     ) -> bool:
-        """Deny a pending review entry"""
-        entry = await self.audit_storage.get_entry(entry_id)
-        if not entry or not entry.is_pending():
-            return False
+        """Deny a pending review entry with atomic state management"""
+        # Check idempotency
+        if idempotency_key and idempotency_key in self._processed_decisions:
+            logger.info("Idempotent request detected", idempotency_key=idempotency_key)
+            return self._processed_decisions[idempotency_key] == "denied"
         
-        # Calculate decision time
-        decision_time_seconds = 0
-        if entry.pending_metadata:
-            delta = datetime.now() - entry.pending_metadata.escalated_at
-            decision_time_seconds = int(delta.total_seconds())
+        # Get or create lock for this entry
+        async with self._locks_lock:
+            if entry_id not in self._entry_locks:
+                self._entry_locks[entry_id] = asyncio.Lock()
+            lock = self._entry_locks[entry_id]
         
-        # Transition to denied state
-        entry.transition_to_denied(
-            decided_by=decided_by,
-            reason=reason,
-            decision_time_seconds=decision_time_seconds,
-            notes=notes
-        )
-        
-        # Update in storage
-        await self.audit_storage.update_entry(entry)
-        
-        # Broadcast state change event
-        await self.event_streamer.broadcast_state_change(entry)
-        
-        logger.info(
-            "Entry denied by human reviewer",
-            entry_id=entry_id,
-            decided_by=decided_by,
-            decision_time_seconds=decision_time_seconds
-        )
-        
-        return True
+        # Perform atomic operation
+        async with lock:
+            # Re-fetch entry within lock to ensure consistency
+            entry = await self.audit_storage.get_entry(entry_id)
+            if not entry or not entry.is_pending():
+                logger.warning(
+                    "Entry not in pending state",
+                    entry_id=entry_id,
+                    current_state=entry.state if entry else "not_found"
+                )
+                return False
+            
+            # Calculate decision time
+            decision_time_seconds = 0
+            if entry.pending_metadata:
+                delta = datetime.now() - entry.pending_metadata.escalated_at
+                decision_time_seconds = int(delta.total_seconds())
+            
+            # Transition to denied state
+            entry.transition_to_denied(
+                decided_by=decided_by,
+                reason=reason,
+                decision_time_seconds=decision_time_seconds,
+                notes=notes
+            )
+            
+            # Update in storage with version check for optimistic locking
+            success = await self.audit_storage.update_entry_atomic(entry)
+            if not success:
+                logger.error("Failed to atomically update entry", entry_id=entry_id)
+                return False
+            
+            # Record idempotency
+            if idempotency_key:
+                self._processed_decisions[idempotency_key] = "denied"
+            
+            # Broadcast state change event (outside of critical section)
+            asyncio.create_task(self.event_streamer.broadcast_state_change(entry))
+            
+            logger.info(
+                "Entry denied by human reviewer",
+                entry_id=entry_id,
+                decided_by=decided_by,
+                decision_time_seconds=decision_time_seconds
+            )
+            
+            return True
     
     async def _timeout_monitor(self) -> None:
         """Background task to monitor and process timeouts"""
@@ -660,9 +811,12 @@ async def get_pending_reviews(
 
 @self.fastapi.post("/v1/audit/{entry_id}/approve")
 async def approve_entry(entry_id: str, request: Request) -> Dict[str, Any]:
-    """Approve a pending review entry"""
+    """Approve a pending review entry with idempotency support"""
     try:
         data = await request.json()
+        
+        # Extract idempotency key from headers or body
+        idempotency_key = request.headers.get("Idempotency-Key") or data.get("idempotency_key")
         
         decided_by = self._extract_user_from_request(request)
         reason = data.get("reason", "Approved by human reviewer")
@@ -672,7 +826,8 @@ async def approve_entry(entry_id: str, request: Request) -> Dict[str, Any]:
             entry_id=entry_id,
             decided_by=decided_by,
             reason=reason,
-            notes=notes
+            notes=notes,
+            idempotency_key=idempotency_key
         )
         
         if not success:
@@ -695,9 +850,12 @@ async def approve_entry(entry_id: str, request: Request) -> Dict[str, Any]:
 
 @self.fastapi.post("/v1/audit/{entry_id}/deny")
 async def deny_entry(entry_id: str, request: Request) -> Dict[str, Any]:
-    """Deny a pending review entry"""
+    """Deny a pending review entry with idempotency support"""
     try:
         data = await request.json()
+        
+        # Extract idempotency key from headers or body
+        idempotency_key = request.headers.get("Idempotency-Key") or data.get("idempotency_key")
         
         decided_by = self._extract_user_from_request(request)
         reason = data.get("reason", "Denied by human reviewer")
@@ -707,7 +865,8 @@ async def deny_entry(entry_id: str, request: Request) -> Dict[str, Any]:
             entry_id=entry_id,
             decided_by=decided_by,
             reason=reason,
-            notes=notes
+            notes=notes,
+            idempotency_key=idempotency_key
         )
         
         if not success:

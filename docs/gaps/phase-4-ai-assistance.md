@@ -1,356 +1,284 @@
-# Phase 4: AI-Assisted Review Implementation
+# Phase 4: Basic Decision Assistance Implementation (Simplified)
 
 ## Overview
 
-Phase 4 enhances the human review process with AI-powered assistance, providing reviewers with intelligent insights, risk analysis, and decision recommendations. This phase leverages superego-mcp's existing AI capabilities to augment human decision-making rather than replace it.
+Phase 4 provides basic decision assistance for human reviewers through simple pattern matching and frequency analysis. This simplified implementation focuses on infrastructure and basic insights rather than complex AI algorithms, making it suitable for a prototype.
 
 ## Goals
 
-- ✅ Provide AI risk analysis for pending reviews
-- ✅ Surface similar past decisions to inform current reviews
-- ✅ Generate decision explanations and confidence scores
-- ✅ Recommend rule modifications based on decision patterns
-- ✅ Implement learning feedback loops from human decisions
-- ✅ Maintain human autonomy while providing intelligent assistance
+- ✅ Surface similar past decisions using simple pattern matching
+- ✅ Provide frequency-based insights ("approved 8/10 times")
+- ✅ Basic decision caching for performance
+- ✅ Simple rule suggestions based on repeated patterns
+- ✅ Infrastructure for future ML enhancements
+- ✅ Maintain simplicity appropriate for prototype
 
 ## Architecture Changes
 
 ### Backend Extensions (superego-mcp)
 
-#### 1. AI Review Assistant Service
+#### 1. Basic Decision Assistant Service
 
 ```python
-# File: src/superego_mcp/domain/ai_review_assistant.py
+# File: src/superego_mcp/domain/basic_decision_assistant.py
 
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
 from datetime import datetime, timedelta
-from ..domain.models import AuditEntry, ToolRequest, Decision
-from ..domain.security_policy import SecurityPolicyEngine
-from ..infrastructure.ai_service import AIService
+from collections import Counter
+import hashlib
+import json
 import structlog
 
 logger = structlog.get_logger(__name__)
 
-class RiskFactor(BaseModel):
-    """Individual risk factor identified by AI analysis"""
-    factor: str
-    severity: str  # "low", "medium", "high", "critical"
-    confidence: float
-    description: str
-    mitigation: Optional[str] = None
-
-class RiskAnalysis(BaseModel):
-    """Comprehensive risk analysis for a tool request"""
-    overall_risk: str  # "low", "medium", "high", "critical"
-    confidence: float
-    risk_factors: List[RiskFactor]
-    risk_score: float  # 0.0 to 1.0
-    explanation: str
-    recommended_action: str  # "approve", "deny", "investigate"
-    similar_decisions_weight: float = Field(default=0.0)
-
 class SimilarDecision(BaseModel):
-    """Similar past decision for context"""
+    """Similar past decision based on simple pattern matching"""
     entry_id: str
     tool_name: str
-    parameters_similarity: float
-    decision_action: str
+    parameter_hash: str  # Simple hash of parameter keys
+    decision_action: str  # "allow", "deny"
     human_decided: bool
     decided_by: Optional[str]
     decision_reason: str
-    confidence: float
     timestamp: datetime
 
-class DecisionRecommendation(BaseModel):
-    """AI recommendation for human decision"""
-    recommended_action: str  # "approve", "deny"
-    confidence: float
-    reasoning: str
-    risk_analysis: RiskAnalysis
+class DecisionPattern(BaseModel):
+    """Pattern observed in decisions"""
+    tool_name: str
+    parameter_pattern: str  # Hash of sorted parameter keys
+    approval_count: int
+    denial_count: int
+    total_count: int
+    approval_rate: float
+    most_common_reason: str
+    last_seen: datetime
+
+class BasicInsight(BaseModel):
+    """Simple insight for human reviewers"""
+    insight_type: str  # "frequency", "pattern", "trend"
+    message: str
+    confidence: float  # Based on sample size
+    supporting_data: Dict[str, Any]
+
+class DecisionAssistance(BaseModel):
+    """Simplified decision assistance for prototype"""
     similar_decisions: List[SimilarDecision]
-    suggested_rules: List['RuleSuggestion']
+    decision_pattern: Optional[DecisionPattern]
+    insights: List[BasicInsight]
+    suggested_action: Optional[str]  # Based on frequency
+    confidence: float  # Based on sample size
     processing_time_ms: int
 
-class RuleSuggestion(BaseModel):
-    """Suggested rule modification based on patterns"""
-    suggestion_type: str  # "create", "modify", "disable"
-    rule_id: Optional[str]  # None for create
-    rule_name: str
-    description: str
-    confidence: float
-    pattern_match_count: int
-    proposed_config: Dict[str, Any]
-
-class AIReviewAssistant:
-    """AI-powered assistance for human reviewers"""
+class BasicDecisionAssistant:
+    """Simple pattern-based assistance for human reviewers"""
     
-    def __init__(
-        self,
-        security_policy: SecurityPolicyEngine,
-        ai_service: AIService,
-        audit_storage,
-        rule_storage
-    ):
-        self.security_policy = security_policy
-        self.ai_service = ai_service
+    def __init__(self, audit_storage):
         self.audit_storage = audit_storage
-        self.rule_storage = rule_storage
-        self._decision_cache: Dict[str, DecisionRecommendation] = {}
+        self._pattern_cache: Dict[str, DecisionPattern] = {}
+        self._cache_ttl = timedelta(minutes=5)  # Simple TTL cache
+        self._cache_timestamps: Dict[str, datetime] = {}
     
-    async def analyze_pending_review(
+    def _get_parameter_hash(self, parameters: Dict[str, Any]) -> str:
+        """Create simple hash of parameter keys for pattern matching"""
+        # Sort keys for consistent hashing
+        sorted_keys = sorted(parameters.keys())
+        key_string = "|".join(sorted_keys)
+        return hashlib.md5(key_string.encode()).hexdigest()[:8]
+    
+    async def get_decision_assistance(
         self, 
-        entry: EnhancedAuditEntry
-    ) -> DecisionRecommendation:
-        """Generate comprehensive analysis and recommendation for pending review"""
-        
-        if entry.id in self._decision_cache:
-            return self._decision_cache[entry.id]
-        
+        entry: AuditEntry
+    ) -> DecisionAssistance:
+        """Generate simple decision assistance based on patterns"""
         start_time = datetime.now()
         
-        try:
-            # Create tool request for analysis
-            tool_request = ToolRequest(
-                tool_name=entry.tool_name,
-                parameters=entry.tool_input,
-                agent_id=entry.agent_identity or "unknown",
-                session_id=entry.session_id,
-                cwd=entry.cwd
-            )
+        # Get parameter pattern
+        param_hash = self._get_parameter_hash(entry.tool_input)
+        pattern_key = f"{entry.tool_name}:{param_hash}"
+        
+        # Find similar decisions
+        similar_decisions = await self._find_similar_decisions(
+            tool_name=entry.tool_name,
+            param_hash=param_hash,
+            limit=10
+        )
+        
+        # Calculate decision pattern
+        decision_pattern = await self._calculate_pattern(
+            tool_name=entry.tool_name,
+            param_hash=param_hash,
+            similar_decisions=similar_decisions
+        )
+        
+        # Generate simple insights
+        insights = self._generate_insights(
+            decision_pattern=decision_pattern,
+            similar_decisions=similar_decisions
+        )
+        
+        # Suggest action based on frequency
+        suggested_action = None
+        confidence = 0.0
+        
+        if decision_pattern and decision_pattern.total_count >= 3:
+            if decision_pattern.approval_rate > 0.7:
+                suggested_action = "allow"
+                confidence = decision_pattern.approval_rate
+            elif decision_pattern.approval_rate < 0.3:
+                suggested_action = "deny"
+                confidence = 1.0 - decision_pattern.approval_rate
             
-            # Run parallel analysis tasks
-            risk_analysis_task = self._analyze_risk(tool_request)
-            similar_decisions_task = self._find_similar_decisions(tool_request, limit=5)
-            rule_suggestions_task = self._suggest_rule_modifications(tool_request)
-            
-            risk_analysis = await risk_analysis_task
-            similar_decisions = await similar_decisions_task
-            rule_suggestions = await rule_suggestions_task
-            
-            # Generate final recommendation
-            recommendation = await self._generate_recommendation(
-                tool_request,
-                risk_analysis,
-                similar_decisions,
-                rule_suggestions
-            )
-            
-            processing_time = int((datetime.now() - start_time).total_seconds() * 1000)
-            
-            decision_recommendation = DecisionRecommendation(
-                recommended_action=recommendation["action"],
-                confidence=recommendation["confidence"],
-                reasoning=recommendation["reasoning"],
-                risk_analysis=risk_analysis,
-                similar_decisions=similar_decisions,
-                suggested_rules=rule_suggestions,
-                processing_time_ms=processing_time
-            )
+            # Adjust confidence based on sample size
+            sample_factor = min(1.0, decision_pattern.total_count / 10.0)
+            confidence *= sample_factor
+        
+        processing_time = int((datetime.now() - start_time).total_seconds() * 1000)
+        
+        return DecisionAssistance(
+            similar_decisions=similar_decisions[:5],  # Top 5 most recent
+            decision_pattern=decision_pattern,
+            insights=insights,
+            suggested_action=suggested_action,
+            confidence=confidence,
+            processing_time_ms=processing_time
+        )
             
             # Cache the result
             self._decision_cache[entry.id] = decision_recommendation
             
-            logger.info(
-                "AI review assistance generated",
-                entry_id=entry.id,
-                recommended_action=recommendation["action"],
-                confidence=recommendation["confidence"],
-                processing_time_ms=processing_time
-            )
-            
-            return decision_recommendation
-            
-        except Exception as e:
-            logger.error("Failed to generate AI review assistance", entry_id=entry.id, error=str(e))
-            
-            # Return fallback recommendation
-            return DecisionRecommendation(
-                recommended_action="investigate",
-                confidence=0.1,
-                reasoning=f"Analysis failed: {str(e)}. Manual review required.",
-                risk_analysis=RiskAnalysis(
-                    overall_risk="medium",
-                    confidence=0.1,
-                    risk_factors=[],
-                    risk_score=0.5,
-                    explanation="Analysis unavailable due to error",
-                    recommended_action="investigate"
-                ),
-                similar_decisions=[],
-                suggested_rules=[],
-                processing_time_ms=int((datetime.now() - start_time).total_seconds() * 1000)
-            )
-    
-    async def _analyze_risk(self, tool_request: ToolRequest) -> RiskAnalysis:
-        """Perform detailed risk analysis using AI"""
-        
-        # Enhanced prompt for risk analysis
-        risk_prompt = f"""
-        Analyze the security risk of this tool request:
-        
-        Tool: {tool_request.tool_name}
-        Parameters: {tool_request.parameters}
-        Context: Agent {tool_request.agent_id} in session {tool_request.session_id}
-        Working Directory: {tool_request.cwd}
-        
-        Provide a detailed risk analysis including:
-        1. Overall risk level (low/medium/high/critical)
-        2. Specific risk factors with severity and description
-        3. Risk score (0.0 to 1.0)
-        4. Explanation of the risks
-        5. Recommended action (approve/deny/investigate)
-        
-        Consider:
-        - Potential for data loss or system damage
-        - Network security implications
-        - File system access patterns
-        - Command injection risks
-        - Privilege escalation potential
-        - Information disclosure risks
-        
-        Format your response as JSON with the following structure:
-        {{
-            "overall_risk": "level",
-            "confidence": 0.9,
-            "risk_score": 0.7,
-            "explanation": "detailed explanation",
-            "recommended_action": "action",
-            "risk_factors": [
-                {{
-                    "factor": "factor name",
-                    "severity": "level",
-                    "confidence": 0.8,
-                    "description": "detailed description",
-                    "mitigation": "possible mitigation"
-                }}
-            ]
-        }}
-        """
-        
-        try:
-            # Use AI service for analysis
-            decision = await self.security_policy.evaluate(tool_request)
-            
-            # Enhanced analysis with dedicated risk prompt
-            risk_response = await self.ai_service.sample_decision(
-                tool_request=tool_request,
-                context={"analysis_type": "risk_assessment", "prompt": risk_prompt}
-            )
-            
-            # Parse AI response (simplified - in practice would need robust JSON parsing)
-            risk_data = self._parse_risk_response(risk_response, decision)
-            
-            return RiskAnalysis(
-                overall_risk=risk_data.get("overall_risk", "medium"),
-                confidence=risk_data.get("confidence", 0.5),
-                risk_score=risk_data.get("risk_score", 0.5),
-                explanation=risk_data.get("explanation", "Risk analysis completed"),
-                recommended_action=risk_data.get("recommended_action", "investigate"),
-                risk_factors=[
-                    RiskFactor(
-                        factor=rf.get("factor", "Unknown"),
-                        severity=rf.get("severity", "medium"),
-                        confidence=rf.get("confidence", 0.5),
-                        description=rf.get("description", ""),
-                        mitigation=rf.get("mitigation")
-                    )
-                    for rf in risk_data.get("risk_factors", [])
-                ]
-            )
-            
-        except Exception as e:
-            logger.error("Risk analysis failed", error=str(e))
-            
-            # Fallback analysis
-            return RiskAnalysis(
-                overall_risk="medium",
-                confidence=0.3,
-                risk_score=0.5,
-                explanation=f"Automated risk analysis failed: {str(e)}",
-                recommended_action="investigate",
-                risk_factors=[
-                    RiskFactor(
-                        factor="Analysis Error",
-                        severity="medium",
-                        confidence=0.3,
-                        description="Automated analysis could not complete successfully"
-                    )
-                ]
-            )
     
     async def _find_similar_decisions(
-        self, 
-        tool_request: ToolRequest, 
-        limit: int = 5
+        self,
+        tool_name: str,
+        param_hash: str,
+        limit: int = 10
     ) -> List[SimilarDecision]:
-        """Find similar past decisions for context"""
-        
+        """Find similar decisions based on tool and parameter pattern"""
         try:
             # Query recent audit entries
-            recent_entries = await self.audit_storage.query_entries(limit=500)
+            recent = await self.audit_storage.query_entries(
+                tool_name=tool_name,
+                limit=100
+            )
             
-            similar_decisions = []
-            
-            for entry_data in recent_entries.get("entries", []):
+            similar = []
+            for entry_data in recent.get("entries", []):
                 entry = await self.audit_storage.get_entry(entry_data["id"])
                 if not entry:
                     continue
                 
-                # Calculate similarity
-                similarity_score = self._calculate_similarity(tool_request, entry)
+                # Simple pattern matching
+                entry_hash = self._get_parameter_hash(entry.tool_input)
                 
-                if similarity_score > 0.3:  # Threshold for similarity
-                    similar_decision = SimilarDecision(
+                if entry_hash == param_hash:
+                    similar.append(SimilarDecision(
                         entry_id=entry.id,
                         tool_name=entry.tool_name,
-                        parameters_similarity=similarity_score,
-                        decision_action=entry.decision_action,
-                        human_decided=entry.state in ["approved", "denied"],
-                        decided_by=entry.decision_metadata.decided_by if entry.decision_metadata else None,
-                        decision_reason=entry.decision_metadata.decision_reason if entry.decision_metadata else entry.decision_reason,
-                        confidence=entry.decision_confidence,
+                        parameter_hash=entry_hash,
+                        decision_action=entry.decision.action,
+                        human_decided=entry.state.value in ["APPROVED", "DENIED"],
+                        decided_by=entry.decision.human_metadata.resolved_by if entry.decision.human_metadata else None,
+                        decision_reason=entry.decision.reason,
                         timestamp=entry.timestamp
-                    )
-                    
-                    similar_decisions.append(similar_decision)
+                    ))
             
-            # Sort by similarity and recency
-            similar_decisions.sort(key=lambda d: (d.parameters_similarity, d.timestamp), reverse=True)
-            
-            return similar_decisions[:limit]
+            # Sort by recency
+            similar.sort(key=lambda d: d.timestamp, reverse=True)
+            return similar[:limit]
             
         except Exception as e:
             logger.error("Failed to find similar decisions", error=str(e))
             return []
     
-    def _calculate_similarity(
-        self, 
-        tool_request: ToolRequest, 
-        entry: EnhancedAuditEntry
-    ) -> float:
-        """Calculate similarity score between requests"""
+    async def _calculate_pattern(
+        self,
+        tool_name: str,
+        param_hash: str,
+        similar_decisions: List[SimilarDecision]
+    ) -> Optional[DecisionPattern]:
+        """Calculate decision pattern from similar decisions"""
+        if not similar_decisions:
+            return None
         
-        similarity_factors = []
+        # Count approvals and denials
+        approval_count = sum(1 for d in similar_decisions if d.decision_action == "allow")
+        denial_count = sum(1 for d in similar_decisions if d.decision_action == "deny")
+        total_count = len(similar_decisions)
         
-        # Tool name match (high weight)
-        if tool_request.tool_name == entry.tool_name:
-            similarity_factors.append(0.4)
+        # Find most common reason
+        reasons = [d.decision_reason for d in similar_decisions if d.decision_reason]
+        most_common_reason = Counter(reasons).most_common(1)[0][0] if reasons else "No reason provided"
         
-        # Parameter similarity (medium weight)
-        param_similarity = self._calculate_parameter_similarity(
-            tool_request.parameters, 
-            entry.tool_input
+        return DecisionPattern(
+            tool_name=tool_name,
+            parameter_pattern=param_hash,
+            approval_count=approval_count,
+            denial_count=denial_count,
+            total_count=total_count,
+            approval_rate=approval_count / total_count if total_count > 0 else 0.5,
+            most_common_reason=most_common_reason,
+            last_seen=max(d.timestamp for d in similar_decisions)
         )
-        similarity_factors.append(param_similarity * 0.3)
+    
+    def _generate_insights(
+        self,
+        decision_pattern: Optional[DecisionPattern],
+        similar_decisions: List[SimilarDecision]
+    ) -> List[BasicInsight]:
+        """Generate simple insights from patterns"""
+        insights = []
         
-        # Agent similarity (low weight)  
-        if tool_request.agent_id == entry.agent_identity:
-            similarity_factors.append(0.1)
+        if decision_pattern:
+            # Frequency insight
+            if decision_pattern.total_count >= 3:
+                confidence = min(1.0, decision_pattern.total_count / 10.0)
+                
+                insights.append(BasicInsight(
+                    insight_type="frequency",
+                    message=f"This action was approved {decision_pattern.approval_count}/{decision_pattern.total_count} times ({decision_pattern.approval_rate:.0%})",
+                    confidence=confidence,
+                    supporting_data={
+                        "approval_count": decision_pattern.approval_count,
+                        "denial_count": decision_pattern.denial_count,
+                        "total_count": decision_pattern.total_count
+                    }
+                ))
+            
+            # Consistency insight
+            if decision_pattern.total_count >= 5:
+                if decision_pattern.approval_rate > 0.8:
+                    insights.append(BasicInsight(
+                        insight_type="pattern",
+                        message="This action is consistently approved",
+                        confidence=0.8,
+                        supporting_data={"approval_rate": decision_pattern.approval_rate}
+                    ))
+                elif decision_pattern.approval_rate < 0.2:
+                    insights.append(BasicInsight(
+                        insight_type="pattern",
+                        message="This action is consistently denied",
+                        confidence=0.8,
+                        supporting_data={"denial_rate": 1.0 - decision_pattern.approval_rate}
+                    ))
         
-        # Working directory similarity (low weight)
-        if tool_request.cwd and entry.cwd and tool_request.cwd == entry.cwd:
-            similarity_factors.append(0.1)
+        # Recent decision insight
+        if similar_decisions:
+            recent = similar_decisions[0]
+            time_since = datetime.now() - recent.timestamp
+            
+            if time_since.total_seconds() < 3600:  # Within last hour
+                insights.append(BasicInsight(
+                    insight_type="trend",
+                    message=f"Similar action was {recent.decision_action}ed {int(time_since.total_seconds() / 60)} minutes ago",
+                    confidence=0.9,
+                    supporting_data={
+                        "recent_action": recent.decision_action,
+                        "recent_reason": recent.decision_reason
+                    }
+                ))
+        
+        return insights
         
         # Time decay factor (recent decisions more relevant)
         time_diff = datetime.now() - entry.timestamp
@@ -619,16 +547,16 @@ class AIReviewAssistant:
             logger.error("Failed to record human decision", error=str(e))
 ```
 
-#### 2. Enhanced API Endpoints
+#### 2. Simplified API Endpoints
 
 ```python
 # File: src/superego_mcp/presentation/unified_server.py
 
-# Add these endpoints for AI assistance:
+# Add these endpoints for basic assistance:
 
 @self.fastapi.get("/v1/audit/{entry_id}/assistance")
-async def get_ai_assistance(entry_id: str) -> Dict[str, Any]:
-    """Get AI assistance for pending review"""
+async def get_decision_assistance(entry_id: str) -> Dict[str, Any]:
+    """Get basic decision assistance for pending review"""
     try:
         entry = await self.audit_storage.get_entry(entry_id)
         if not entry:
@@ -637,228 +565,108 @@ async def get_ai_assistance(entry_id: str) -> Dict[str, Any]:
         if not entry.is_pending():
             raise HTTPException(status_code=400, detail="Entry is not pending review")
         
-        # Generate AI assistance
-        recommendation = await self.ai_review_assistant.analyze_pending_review(entry)
+        # Generate basic assistance
+        assistance = await self.decision_assistant.get_decision_assistance(entry)
         
         return {
             "entry_id": entry_id,
-            "recommendation": {
-                "action": recommendation.recommended_action,
-                "confidence": recommendation.confidence,
-                "reasoning": recommendation.reasoning,
-                "processing_time_ms": recommendation.processing_time_ms
-            },
-            "risk_analysis": {
-                "overall_risk": recommendation.risk_analysis.overall_risk,
-                "confidence": recommendation.risk_analysis.confidence,
-                "risk_score": recommendation.risk_analysis.risk_score,
-                "explanation": recommendation.risk_analysis.explanation,
-                "risk_factors": [
-                    {
-                        "factor": rf.factor,
-                        "severity": rf.severity,
-                        "confidence": rf.confidence,
-                        "description": rf.description,
-                        "mitigation": rf.mitigation
-                    }
-                    for rf in recommendation.risk_analysis.risk_factors
-                ]
-            },
             "similar_decisions": [
                 {
                     "entry_id": sd.entry_id,
                     "tool_name": sd.tool_name,
-                    "similarity": sd.parameters_similarity,
                     "decision": sd.decision_action,
                     "human_decided": sd.human_decided,
                     "decided_by": sd.decided_by,
                     "reason": sd.decision_reason,
                     "timestamp": sd.timestamp.isoformat()
                 }
-                for sd in recommendation.similar_decisions
+                for sd in assistance.similar_decisions
             ],
-            "rule_suggestions": [
+            "pattern": {
+                "approval_rate": assistance.decision_pattern.approval_rate if assistance.decision_pattern else None,
+                "total_count": assistance.decision_pattern.total_count if assistance.decision_pattern else 0,
+                "most_common_reason": assistance.decision_pattern.most_common_reason if assistance.decision_pattern else None
+            } if assistance.decision_pattern else None,
+            "insights": [
                 {
-                    "type": rs.suggestion_type,
-                    "rule_id": rs.rule_id,
-                    "name": rs.rule_name,
-                    "description": rs.description,
-                    "confidence": rs.confidence,
-                    "pattern_count": rs.pattern_match_count,
-                    "config": rs.proposed_config
+                    "type": insight.insight_type,
+                    "message": insight.message,
+                    "confidence": insight.confidence
                 }
-                for rs in recommendation.suggested_rules
-            ]
+                for insight in assistance.insights
+            ],
+            "suggested_action": assistance.suggested_action,
+            "confidence": assistance.confidence,
+            "processing_time_ms": assistance.processing_time_ms
         }
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("Failed to get AI assistance", entry_id=entry_id, error=str(e))
+        logger.error("Failed to get decision assistance", entry_id=entry_id, error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
-@self.fastapi.post("/v1/audit/{entry_id}/feedback")
-async def record_decision_feedback(entry_id: str, request: Request) -> Dict[str, Any]:
-    """Record human decision feedback for AI learning"""
+@self.fastapi.get("/v1/audit/patterns")
+async def get_decision_patterns(tool_name: Optional[str] = None, limit: int = 20) -> Dict[str, Any]:
+    """Get simple decision patterns for learning (prototype infrastructure)"""
     try:
-        data = await request.json()
-        
-        human_action = data.get("action")  # "approve" or "deny"
-        human_reason = data.get("reason", "")
-        ai_helpful = data.get("ai_helpful", True)  # Boolean feedback
-        feedback_notes = data.get("feedback_notes", "")
-        
-        if not human_action or human_action not in ["approve", "deny"]:
-            raise HTTPException(status_code=400, detail="Invalid action")
-        
-        # Get AI recommendation if it exists in cache
-        ai_recommendation = self.ai_review_assistant._decision_cache.get(entry_id)
-        
-        # Record feedback
-        await self.ai_review_assistant.record_human_decision(
-            entry_id=entry_id,
-            human_action=human_action,
-            human_reason=human_reason,
-            ai_recommendation=ai_recommendation
-        )
-        
-        # Store additional feedback
-        feedback_record = {
-            "entry_id": entry_id,
-            "human_action": human_action,
-            "ai_helpful": ai_helpful,
-            "feedback_notes": feedback_notes,
-            "timestamp": datetime.now().isoformat()
-        }
-        
-        logger.info(
-            "Decision feedback recorded",
-            entry_id=entry_id,
-            human_action=human_action,
-            ai_helpful=ai_helpful
-        )
-        
-        return {"success": True, "message": "Feedback recorded"}
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("Failed to record feedback", entry_id=entry_id, error=str(e))
-        raise HTTPException(status_code=500, detail=str(e))
-
-@self.fastapi.post("/v1/config/rules/suggestions")
-async def get_rule_suggestions(request: Request) -> Dict[str, Any]:
-    """Get AI-generated rule suggestions based on decision patterns"""
-    try:
-        data = await request.json()
-        
-        # Allow suggestions based on specific tool or general patterns
-        tool_name = data.get("tool_name")
-        lookback_days = data.get("lookback_days", 30)
-        
-        # Analyze recent decisions for patterns
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=lookback_days)
-        
-        recent_entries = await self.audit_storage.query_entries(
+        # Query recent decisions
+        recent = await self.audit_storage.query_entries(
             tool_name=tool_name,
-            limit=500
+            limit=100
         )
         
-        suggestions = []
+        # Simple frequency counting
+        patterns = {}
+        for entry_data in recent.get("entries", []):
+            tool = entry_data["tool_name"]
+            action = entry_data.get("decision_action", "unknown")
+            
+            if tool not in patterns:
+                patterns[tool] = {"allow": 0, "deny": 0, "total": 0}
+            
+            patterns[tool]["total"] += 1
+            if action == "allow":
+                patterns[tool]["allow"] += 1
+            elif action == "deny":
+                patterns[tool]["deny"] += 1
         
-        # Group by tool name and analyze patterns
-        tool_patterns = {}
-        
-        for entry_data in recent_entries.get("entries", []):
-            entry = await self.audit_storage.get_entry(entry_data["id"])
-            if not entry or entry.timestamp < start_date:
-                continue
-            
-            tool = entry.tool_name
-            if tool not in tool_patterns:
-                tool_patterns[tool] = {"approved": 0, "denied": 0, "total": 0}
-            
-            tool_patterns[tool]["total"] += 1
-            
-            if entry.state == "approved":
-                tool_patterns[tool]["approved"] += 1
-            elif entry.state == "denied":
-                tool_patterns[tool]["denied"] += 1
-        
-        # Generate suggestions based on patterns
-        for tool, patterns in tool_patterns.items():
-            if patterns["total"] < 3:  # Need minimum decisions
-                continue
-            
-            approval_rate = patterns["approved"] / patterns["total"]
-            denial_rate = patterns["denied"] / patterns["total"]
-            
-            if approval_rate > 0.8:
-                suggestions.append({
-                    "type": "create",
-                    "rule_name": f"Auto-approve {tool} operations",
-                    "description": f"Based on {patterns['total']} decisions with {approval_rate*100:.1f}% approval rate",
-                    "confidence": approval_rate,
-                    "evidence_count": patterns["total"],
-                    "proposed_config": {
-                        "name": f"Auto-approve {tool} operations",
-                        "evaluator": {
-                            "type": "pattern",
-                            "config": {
-                                "tool_patterns": [{"name": tool, "type": "builtin"}],
-                                "action": "always_allow"
-                            }
-                        },
-                        "priority": 200,
-                        "enabled": True
-                    }
+        # Convert to list format
+        pattern_list = []
+        for tool, counts in patterns.items():
+            if counts["total"] >= 3:  # Minimum threshold
+                pattern_list.append({
+                    "tool_name": tool,
+                    "approval_rate": counts["allow"] / counts["total"] if counts["total"] > 0 else 0,
+                    "total_decisions": counts["total"],
+                    "allow_count": counts["allow"],
+                    "deny_count": counts["deny"]
                 })
-            
-            elif denial_rate > 0.8:
-                suggestions.append({
-                    "type": "create", 
-                    "rule_name": f"Auto-deny {tool} operations",
-                    "description": f"Based on {patterns['total']} decisions with {denial_rate*100:.1f}% denial rate",
-                    "confidence": denial_rate,
-                    "evidence_count": patterns["total"],
-                    "proposed_config": {
-                        "name": f"Auto-deny {tool} operations",
-                        "evaluator": {
-                            "type": "pattern",
-                            "config": {
-                                "tool_patterns": [{"name": tool, "type": "builtin"}],
-                                "action": "always_deny"
-                            }
-                        },
-                        "priority": 100,
-                        "enabled": True
-                    }
-                })
+        
+        # Sort by total decisions
+        pattern_list.sort(key=lambda p: p["total_decisions"], reverse=True)
         
         return {
-            "suggestions": suggestions,
-            "analysis_period": {
-                "start_date": start_date.isoformat(),
-                "end_date": end_date.isoformat(),
-                "total_decisions": sum(p["total"] for p in tool_patterns.values())
-            }
+            "patterns": pattern_list[:limit],
+            "total_tools_analyzed": len(patterns)
         }
         
     except Exception as e:
-        logger.error("Failed to get rule suggestions", error=str(e))
+        logger.error("Failed to get decision patterns", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
+
+# Removed complex rule suggestions endpoint - defer to post-prototype
 ```
 
 ### Frontend Extensions (cco-mcp)
 
-#### 1. AI Assistance Panel Component
+#### 1. Basic Assistance Panel Component (Simplified)
 
 ```typescript
-// File: ui/src/components/ai/AIAssistancePanel.tsx
+// File: ui/src/components/assistance/BasicAssistancePanel.tsx
 
 import React, { useState, useEffect } from 'react';
-import { DecisionRecommendation, RiskAnalysis, SimilarDecision, RuleSuggestion } from '../../types/ai-assistance';
+import { DecisionAssistance, SimilarDecision, BasicInsight } from '../../types/assistance';
 
 interface AIAssistancePanelProps {
   entryId: string;
@@ -1546,7 +1354,7 @@ export function RuleSuggestionsDashboard() {
 
 ### Backend Testing
 
-#### 1. AI Analysis Tests
+#### 1. Pattern Matching Tests
 ```python
 # File: tests/test_ai_review_assistant.py
 
@@ -1647,55 +1455,62 @@ describe('AIAssistancePanel', () => {
 ## Success Criteria
 
 ### Functional Requirements ✅
-- [ ] AI assistance provides risk analysis for pending reviews
-- [ ] Similar past decisions are surfaced with similarity scores
-- [ ] Rule suggestions are generated based on decision patterns
-- [ ] Human reviewers can accept or reject AI recommendations
-- [ ] Feedback is collected for AI improvement
-- [ ] Integration works seamlessly with existing review workflow
+- [ ] Basic pattern matching finds similar past decisions
+- [ ] Frequency-based insights are generated correctly
+- [ ] Decision patterns are calculated from history
+- [ ] Simple suggestions based on approval rates
+- [ ] Infrastructure ready for future ML enhancements
+- [ ] Integration works with existing review workflow
 
 ### Performance Requirements ✅
-- [ ] AI analysis completes within 10 seconds
-- [ ] Similar decision lookup takes less than 5 seconds
-- [ ] Rule suggestions generate within 15 seconds
-- [ ] UI remains responsive during AI processing
+- [ ] Pattern matching completes within 1 second
+- [ ] Similar decision lookup takes less than 500ms
+- [ ] Insights generation within 2 seconds
+- [ ] UI remains responsive during processing
 
 ### Quality Requirements ✅
-- [ ] AI risk analysis accuracy > 70% correlation with human judgment
-- [ ] Similar decision matching identifies relevant cases
-- [ ] Rule suggestions reduce manual reviews by 20%+
-- [ ] Human-AI agreement rate tracked and improving over time
+- [ ] Pattern matching accuracy (exact parameter key matching)
+- [ ] Frequency calculations are correct
+- [ ] Confidence based on sample size
+- [ ] No complex AI dependencies for prototype
 
 ## Future Enhancements
 
-### Post-Phase 4 Improvements
-1. **Machine Learning Integration**: Train models on decision history
-2. **Advanced Pattern Recognition**: Context-aware similarity matching
-3. **Predictive Analytics**: Forecast rule effectiveness
-4. **Multi-modal Analysis**: Incorporate code analysis, network patterns
-5. **Personalized Recommendations**: Adapt to individual reviewer preferences
+### Post-Prototype Improvements
+1. **Advanced Pattern Matching**: Parameter value analysis, not just keys
+2. **Machine Learning Integration**: Train models on decision history
+3. **AI Risk Analysis**: Add actual AI-powered risk assessment
+4. **Semantic Similarity**: Context-aware matching beyond simple hashes
+5. **Learning Feedback Loop**: Improve from human decisions
 
-### AI Model Improvements
-1. **Fine-tuned Security Models**: Domain-specific risk assessment
-2. **Ensemble Methods**: Multiple AI opinions for complex cases
-3. **Confidence Calibration**: Better uncertainty quantification
-4. **Explainable AI**: More detailed reasoning for decisions
+### Infrastructure Ready For
+1. **Model Integration**: Hooks for ML models when ready
+2. **Advanced Analytics**: Data pipeline for pattern analysis
+3. **A/B Testing**: Compare simple vs. advanced assistance
+4. **Performance Metrics**: Track assistance effectiveness
 
 ## Conclusion
 
-Phase 4 completes the migration by adding intelligent assistance to human reviewers, creating a collaborative human-AI system that improves over time. The AI provides insights and recommendations while preserving human autonomy and decision-making authority.
+Phase 4 (Simplified) completes the migration by adding basic decision assistance to human reviewers through simple pattern matching and frequency analysis. This prototype implementation focuses on infrastructure and basic insights rather than complex AI algorithms.
 
-**Key Benefits**:
-- Faster, more informed human decisions
-- Learning from human expertise
-- Automated rule generation from patterns
-- Reduced cognitive load on reviewers
-- Continuous improvement through feedback
+**Key Benefits for Prototype**:
+- Simple, understandable pattern matching
+- Fast performance with no external dependencies
+- Infrastructure ready for future ML enhancements
+- Reduced complexity for initial deployment
+- Clear path for incremental improvements
 
 **Integration Points**:
 - Seamlessly integrated with Phase 3 review workflow
-- Non-intrusive AI assistance (can be toggled off)
-- Maintains full audit trail including AI inputs
-- Respects human final authority
+- Lightweight assistance that can be toggled off
+- Maintains full audit trail
+- No complex AI dependencies
 
-This comprehensive system provides both automated evaluation and human oversight, with AI assistance that learns and improves from human decisions, creating a robust and adaptive security review system.
+**Upgrade Path**:
+This simplified implementation provides the foundation for future enhancements:
+1. Start with basic pattern matching (Phase 4)
+2. Collect data and validate infrastructure
+3. Add ML models incrementally post-prototype
+4. Evolve based on real usage patterns
+
+The simplified Phase 4 delivers immediate value through basic insights while establishing the infrastructure needed for more sophisticated AI assistance in the future.

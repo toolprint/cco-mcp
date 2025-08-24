@@ -5,8 +5,14 @@
 This document outlines the comprehensive migration plan for transitioning the cco-mcp frontend to use the superego-mcp backend. The migration will be implemented in four incremental phases, starting with an "observe-only" mode and gradually adding human review capabilities while preserving existing UI components.
 
 **Migration Feasibility**: ✅ **ACHIEVABLE** with significant backend additions
-**Estimated Timeline**: 8-12 weeks across four phases
-**Risk Level**: Medium - requires substantial backend changes but maintains frontend stability
+**Estimated Timeline**: 10 weeks (revised from 8-12 weeks)
+**Risk Level**: Low-Medium (reduced through architectural improvements)
+
+**Key Improvements Based on Review**:
+- SQLite persistence added for data durability
+- Atomic state management for race condition prevention
+- Simplified Phase 4 for prototype appropriateness
+- Resilience patterns for external service failures
 
 ## Current State Analysis
 
@@ -14,7 +20,7 @@ This document outlines the comprehensive migration plan for transitioning the cc
 - **Purpose**: Manual approval workflow for Claude Code tool calls
 - **Key Features**: Human-in-the-loop approvals, real-time SSE updates, rule-based auto-approval
 - **Data Flow**: Tool call → Rule evaluation → Manual review (if needed) → Approve/Deny
-- **Storage**: In-memory with TTL-based expiration
+- **Storage**: ~~In-memory with TTL-based expiration~~ → SQLite with in-memory cache (improved)
 - **UI**: React dashboard for audit logs and configuration management
 
 ### Superego-MCP Architecture  
@@ -47,13 +53,14 @@ This document outlines the comprehensive migration plan for transitioning the cc
 
 ### Phased Implementation
 
-#### **Phase 1: Observe-Only Mode** (3 weeks)
+#### **Phase 1: Observe-Only Mode with Persistence** (2 weeks - reduced from 3)
 **Goal**: Deploy cco-mcp frontend in read-only mode with superego-mcp backend
 
 **Capabilities**:
 - ✅ View audit history of AI-made decisions
 - ✅ Real-time monitoring via SSE
 - ✅ Filter and search audit entries
+- ✅ **NEW**: SQLite persistence with in-memory cache
 - ❌ No manual approve/deny (UI buttons disabled)
 - ❌ No configuration changes
 
@@ -61,9 +68,10 @@ This document outlines the comprehensive migration plan for transitioning the cc
 - Validates integration architecture
 - Allows observation of decision patterns
 - Identifies rule refinement needs
+- **Data persistence across restarts**
 - Low risk deployment
 
-#### **Phase 2: Rule Management** (2-3 weeks)
+#### **Phase 2: Rule Management** (3 weeks - as planned)
 **Goal**: Enable configuration management through the UI
 
 **Capabilities**:
@@ -78,8 +86,8 @@ This document outlines the comprehensive migration plan for transitioning the cc
 - Rapid rule iteration
 - Supports both simple and AI-powered rules
 
-#### **Phase 3: Human Escalation** (3-4 weeks)
-**Goal**: Add manual review capabilities with timeout handling
+#### **Phase 3: Human Escalation with Atomic Operations** (4 weeks - increased for complexity)
+**Goal**: Add manual review capabilities with timeout handling and atomic state management
 
 **Capabilities**:
 - ✅ "Human review" action type
@@ -87,20 +95,24 @@ This document outlines the comprehensive migration plan for transitioning the cc
 - ✅ Manual approve/deny with reasons
 - ✅ Configurable timeouts
 - ✅ Decision tracking and audit
+- ✅ **NEW**: Atomic state transitions with locking
+- ✅ **NEW**: Idempotency support for requests
 
 **Benefits**:
 - Complete manual oversight capability
 - Gradual automation through rule refinement
 - Full audit trail of human decisions
 
-#### **Phase 4: AI-Assisted Review** (2-3 weeks)
-**Goal**: Enhance human decisions with AI insights
+#### **Phase 4: Basic Decision Assistance** (1 week - simplified from 2-3)
+**Goal**: Provide basic pattern matching assistance for human reviewers
 
 **Capabilities**:
-- ✅ AI risk analysis for pending reviews
-- ✅ Similar past decisions suggestions
-- ✅ Rule modification recommendations
-- ✅ Decision explanation generation
+- ✅ Simple pattern matching for similar decisions
+- ✅ Frequency-based insights ("approved 8/10 times")
+- ✅ Basic decision caching
+- ✅ Infrastructure for future ML enhancements
+- ❌ ~~Complex AI risk analysis~~ (deferred to post-prototype)
+- ❌ ~~ML-based recommendations~~ (deferred to post-prototype)
 
 **Benefits**:
 - Faster human decision-making
@@ -143,6 +155,30 @@ class RuleEvaluator(ABC):
 | `GET /api/config` | `GET /v1/config/rules` | **Existing** - Enhanced |
 | `PUT /api/config` | `PUT /v1/config/rules` | **New** - CRUD operations |
 | `GET /api/audit-log/stream` | `GET /v1/events/stream` | **Enhanced** - Wire up SSE |
+
+### Architectural Improvements
+
+1. **Persistence Layer**: SQLite database with in-memory LRU cache
+   - Survives restarts
+   - Optimistic locking with version fields
+   - WAL mode for better concurrency
+
+2. **Atomic State Management**: Asyncio locks and database transactions
+   - Prevents race conditions in concurrent approvals
+   - Idempotency keys for request deduplication
+   - Version-based optimistic locking
+
+3. **Resilience Patterns**: Circuit breaker and retry logic
+   - Circuit breaker for AI service calls
+   - Exponential backoff with jitter
+   - Fallback strategies for failures
+   - Decision caching with TTL
+
+4. **Simplified AI Assistance**: Pattern matching over complex ML
+   - Simple parameter hash matching
+   - Frequency-based insights
+   - Infrastructure ready for future ML
+   - Reduced complexity for prototype
 
 ### Data Model Evolution
 
@@ -417,11 +453,13 @@ class AuditEntryWithAssistance(BaseModel):
 ## Future Enhancements
 
 ### Post-Migration Improvements
-1. **Persistent Storage**: Replace in-memory storage with database persistence
+1. ~~**Persistent Storage**~~ ✅ Implemented in Phase 1 with SQLite
 2. **Advanced Analytics**: Decision pattern analysis and reporting
 3. **Multi-tenant Support**: Separate configurations per organization/team
 4. **Integration Expansion**: Support for additional Claude Code hook types
-5. **Machine Learning**: Automated rule generation from decision patterns
+5. **Machine Learning**: Upgrade from basic pattern matching to ML models
+6. **Production Hardening**: PostgreSQL migration, distributed locking with Redis
+7. **Advanced AI Features**: Risk analysis, semantic similarity matching
 
 ### Monitoring & Observability
 1. **Metrics Dashboard**: Decision rates, approval rates, timeout rates
@@ -431,22 +469,43 @@ class AuditEntryWithAssistance(BaseModel):
 
 ## Conclusion
 
-This migration plan provides a comprehensive roadmap for transitioning from cco-mcp to superego-mcp backend while preserving existing functionality and enabling future enhancements. The phased approach minimizes risk while delivering value incrementally.
+This **revised** migration plan incorporates critical architectural improvements based on thorough review, providing a more robust roadmap for transitioning from cco-mcp to superego-mcp backend. The enhancements address key concerns around persistence, concurrency, resilience, and prototype-appropriate complexity.
 
-The unified rule evaluation model serves as the foundation for supporting both simple pattern-based rules and advanced AI-powered evaluation, providing flexibility for different deployment scenarios and gradual automation adoption.
+**Key Improvements from Review**:
+- **SQLite persistence** prevents data loss and enables recovery
+- **Atomic state management** eliminates race conditions
+- **Resilience patterns** handle external service failures gracefully
+- **Simplified Phase 4** focuses on infrastructure over algorithms
+- **Reduced timeline** (10 weeks) through better scoping
 
-**Key Success Factors**:
-1. Thorough testing at each phase boundary
-2. Maintaining UI stability throughout migration
-3. Robust state management for human review workflows
-4. Performance optimization for real-time updates
-5. Clear rollback procedures for each phase
+**Architectural Strengths**:
+1. **Unified rule evaluation model** provides excellent extensibility
+2. **Phased approach** minimizes risk and enables continuous delivery
+3. **Infrastructure-first** design ready for future ML enhancements
+4. **Prototype-appropriate** complexity with clear upgrade path
 
-**Next Steps**:
-1. Review and approve this migration plan
-2. Begin Phase 1 implementation with observe-only mode
-3. Establish testing infrastructure and success metrics
-4. Plan detailed implementation milestones for each phase
+**Success Factors**:
+1. SQLite persistence from Day 1
+2. Atomic operations in all state transitions
+3. Circuit breakers for external services
+4. Simple pattern matching before complex AI
+5. Comprehensive testing at phase boundaries
+
+**Immediate Next Steps**:
+1. Implement SQLite storage layer
+2. Add asyncio locks for concurrency control
+3. Deploy Phase 1 with observe-only mode
+4. Validate architecture with real usage patterns
+5. Iterate based on observed behavior
+
+**Risk Mitigation**:
+The revised plan significantly reduces risk through:
+- Data persistence eliminating loss scenarios
+- Atomic operations preventing inconsistent states
+- Fallback strategies ensuring system availability
+- Simplified scope appropriate for prototype constraints
+
+This migration provides a solid foundation that can evolve from prototype to production-ready system while maintaining stability and delivering value at each phase.
 
 For detailed implementation specifications, see the supporting documents:
 - [Unified Rule Model Specification](./unified-rule-model.md)
